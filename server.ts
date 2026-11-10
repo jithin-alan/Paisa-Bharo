@@ -11,6 +11,7 @@ import {
   getOfferwallAdapter,
 } from './src/providers/offerwallAdapter.ts';
 import { affiliateDealsAdapter } from './src/providers/affiliateDealsAdapter.ts';
+import { processProviderCallback } from './functions/src/providerCallbacks';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -56,7 +57,7 @@ async function startServer() {
   });
 
   // Process Cint callback (Supports both POST S2S and GET redirect returns)
-  const handleCintCallback = (req: express.Request, res: express.Response) => {
+  const handleCintCallback = async (req: express.Request, res: express.Response) => {
     const payload = {
       respondentId: req.body.respondentId || req.query.respondentId || 'guest_user',
       surveyId: req.body.surveyId || req.query.surveyId || 'cint_srv_901',
@@ -66,8 +67,23 @@ async function startServer() {
       timestamp: new Date().toISOString(),
     };
 
-    const result = cintAdapter.processCallback(payload);
-    res.json(result);
+    const result = await cintAdapter.processCallback(payload);
+    if (!result.success) {
+      res.status(200).json(result);
+      return;
+    }
+
+    // Credit the wallet atomically via Firestore transaction
+    const walletResult = await processProviderCallback({
+      provider: 'cint',
+      transactionId: result.transactionId,
+      userId: payload.respondentId,
+      coinsAwarded: result.coinsAwarded,
+      reason: `Cint survey ${payload.status}`,
+      metadata: { surveyId: payload.surveyId, status: payload.status },
+    });
+
+    res.json({ ...result, wallet: walletResult });
   };
 
   app.post('/api/callbacks/cint', handleCintCallback);
@@ -119,11 +135,27 @@ async function startServer() {
   const handleAdGemPostback = async (req: express.Request, res: express.Response) => {
     const payload = { ...req.query, ...req.body };
     const result = await adGemAdapter.processPostback(payload);
-    // AdGem expects HTTP 200 with confirmation
-    if (result.success) {
-      res.status(200).json({ ...result, adgemCode: 1 });
-    } else {
+
+    if (!result.success) {
       res.status(200).json({ ...result, adgemCode: 0 });
+      return;
+    }
+
+    // Credit the wallet atomically via Firestore transaction
+    const walletResult = await processProviderCallback({
+      provider: 'adgem',
+      transactionId: result.transactionId,
+      userId: result.userId,
+      coinsAwarded: result.coinsAwarded,
+      reason: 'AdGem offerwall postback',
+      metadata: { providerRef: 'adgem' },
+    });
+
+    // AdGem expects HTTP 200 with confirmation
+    if (walletResult.success) {
+      res.status(200).json({ ...result, wallet: walletResult, adgemCode: 1 });
+    } else {
+      res.status(200).json({ ...result, wallet: walletResult, adgemCode: 0 });
     }
   };
 
@@ -134,8 +166,28 @@ async function startServer() {
   const handleBitLabsPostback = async (req: express.Request, res: express.Response) => {
     const payload = { ...req.query, ...req.body };
     const result = await bitLabsAdapter.processPostback(payload);
+
+    if (!result.success) {
+      res.status(200).json({ ...result, bitlabsOutcome: 'error' });
+      return;
+    }
+
+    // Credit the wallet atomically via Firestore transaction
+    const walletResult = await processProviderCallback({
+      provider: 'bitlabs',
+      transactionId: result.transactionId,
+      userId: result.userId,
+      coinsAwarded: result.coinsAwarded,
+      reason: 'BitLabs offerwall postback',
+      metadata: { providerRef: 'bitlabs' },
+    });
+
     // BitLabs expects HTTP 200 with confirmation
-    res.status(200).json({ ...result, bitlabsOutcome: result.success ? 'success' : 'error' });
+    if (walletResult.success) {
+      res.status(200).json({ ...result, wallet: walletResult, bitlabsOutcome: 'success' });
+    } else {
+      res.status(200).json({ ...result, wallet: walletResult, bitlabsOutcome: 'error' });
+    }
   };
 
   app.post('/api/postbacks/bitlabs', handleBitLabsPostback);
@@ -189,7 +241,23 @@ async function startServer() {
     };
 
     const result = await affiliateDealsAdapter.processPostback(payload);
-    res.json(result);
+
+    if (!result.success) {
+      res.json(result);
+      return;
+    }
+
+    // Credit the wallet atomically via Firestore transaction
+    const walletResult = await processProviderCallback({
+      provider: 'affiliate',
+      transactionId: `${payload.network}_${payload.orderId}`,
+      userId: payload.userId,
+      coinsAwarded: result.coinsAwarded,
+      reason: `Affiliate conversion: ${payload.merchantName} via ${payload.network}`,
+      metadata: { network: payload.network, orderId: payload.orderId, clickId: payload.clickId },
+    });
+
+    res.json({ ...result, wallet: walletResult });
   };
 
   app.post('/api/postbacks/affiliate', handleAffiliatePostback);

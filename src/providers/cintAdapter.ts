@@ -12,13 +12,84 @@ export interface CintCallbackResult {
 const processedTransactions = new Set<string>();
 
 /**
+ * Helper: Convert string to ArrayBuffer for Web Crypto API
+ */
+function stringToArrayBuffer(str: string): ArrayBuffer {
+  const encoder = new TextEncoder();
+  const result = encoder.encode(str);
+  return result.buffer.slice(0, result.byteLength) as ArrayBuffer;
+}
+
+/**
+ * Helper: Convert ArrayBuffer to hex string
+ */
+function arrayBufferToHex(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * HMAC-SHA256 using Web Crypto API
+ */
+async function hmacSha256(key: string, data: string): Promise<string> {
+  const cryptoObj = typeof crypto !== 'undefined' ? crypto : (await import('crypto')).webcrypto;
+  const keyBuffer = stringToArrayBuffer(key);
+  const dataBuffer = stringToArrayBuffer(data);
+
+  const cryptoKey = await cryptoObj.subtle.importKey(
+    'raw',
+    keyBuffer,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+
+  const signature = await cryptoObj.subtle.sign('HMAC', cryptoKey, dataBuffer);
+  return arrayBufferToHex(signature);
+}
+
+/**
+ * Timing-safe comparison for hex strings
+ */
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
+/**
+ * Verifies Cint callback signature using HMAC-SHA256
+ * Cint provides a secureHash field that should be verified
+ */
+async function verifyCintSignature(payload: CintCallbackPayload, apiKey: string): Promise<boolean> {
+  const hash = payload.secureHash;
+  if (!hash || typeof hash !== 'string') {
+    return false;
+  }
+
+  // Cint signature verification: timestamp|respondentId|surveyId|status|subId
+  const verifyString = [
+    payload.timestamp,
+    payload.respondentId,
+    payload.surveyId,
+    payload.status,
+    payload.subId || 'paisabhar_web',
+  ].join('|');
+
+  const expectedHash = await hmacSha256(apiKey, verifyString);
+  return timingSafeEqual(hash, expectedHash);
+}
+
+/**
  * Cint Survey Supply Adapter
- * Manages survey inventory, user-specific survey routing, and completion/reversal callbacks.
  */
 export class CintSurveyAdapter {
   private apiKey: string;
   private apiBaseUrl: string;
-  private coinExchangeRate: number; // Coins per USD
+  private coinExchangeRate: number;
 
   constructor(apiKey = 'dummy_cint_api_key_sandbox', apiBaseUrl = 'https://api.cint.com/v1', coinExchangeRate = 1000) {
     this.apiKey = apiKey;
@@ -26,14 +97,9 @@ export class CintSurveyAdapter {
     this.coinExchangeRate = coinExchangeRate;
   }
 
-  /**
-   * Fetches eligible surveys for a given user profile.
-   * In sandbox mode, returns curated high-match surveys with realistic LOI and rewards.
-   */
   async getEligibleSurveys(userId: string, userProfile?: { country?: string; age?: number; gender?: string }): Promise<CintSurvey[]> {
-    // When live credentials are supplied, this will call `fetch(`${this.apiBaseUrl}/fulfillment/respondents/${userId}/surveys`...)`
     const isIndia = (userProfile?.country || 'INR') === 'INR';
-    
+
     return [
       {
         id: 'cint_srv_901',
@@ -103,9 +169,6 @@ export class CintSurveyAdapter {
     ];
   }
 
-  /**
-   * Generates a tracked Cint survey redirect URL for the respondent.
-   */
   generateSurveyRedirectUrl(surveyId: string, userId: string, subId?: string): string {
     const params = new URLSearchParams({
       survey_id: surveyId,
@@ -117,11 +180,25 @@ export class CintSurveyAdapter {
     return `https://s.cint.com/survey/entry?${params.toString()}`;
   }
 
-  /**
-   * Processes incoming Cint completion or reversal callbacks (S2S or redirect return).
-   */
-  processCallback(payload: CintCallbackPayload): CintCallbackResult {
+  async processCallback(payload: CintCallbackPayload): Promise<CintCallbackResult> {
     const txKey = `cint_${payload.surveyId}_${payload.respondentId}_${payload.status}`;
+
+    // SECURITY: Verify signature before processing
+    if (this.apiKey && this.apiKey !== 'dummy_cint_api_key_sandbox') {
+      const isValid = await verifyCintSignature(payload, this.apiKey);
+      if (!isValid) {
+        console.warn(`[SECURITY] Cint callback signature verification failed for survey ${payload.surveyId}, respondent ${payload.respondentId}`);
+        return {
+          success: false,
+          status: payload.status,
+          coinsAwarded: 0,
+          message: `Invalid Cint callback signature. Security verification failed for survey ${payload.surveyId}.`,
+          transactionId: txKey,
+        };
+      }
+    } else {
+      console.warn('[SECURITY] Cint callback using unverified dummy API key');
+    }
 
     if (processedTransactions.has(txKey)) {
       return {
@@ -159,7 +236,6 @@ export class CintSurveyAdapter {
       };
     }
 
-    // Screenout or Quotafull: award small consolation (e.g. 10 coins)
     if (payload.status === 'screenout' || payload.status === 'quotafull') {
       const consolationCoins = 15;
       processedTransactions.add(txKey);

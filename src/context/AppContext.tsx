@@ -707,7 +707,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     coinsSpent: number,
     accountDetails: string
   ): Promise<{ success: boolean; message?: string }> => {
-    // UX check only. The server re-checks the balance inside a transaction.
+    // Client-side UX check only. The server performs authoritative validation
+    // via a Firestore transaction that atomically checks balance and deducts coins.
     if (!user || user.coinsBalance < coinsSpent) {
       return { success: false, message: 'Insufficient coins in balance.' };
     }
@@ -726,6 +727,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return { success: false, message: 'Failed to process redemption' };
       }
 
+      // Update local state from server response (authoritative balance)
       const newRecord: RedemptionRecord = {
         id: data.redemptionId,
         userId: firebaseUser ? firebaseUser.uid : user.uid,
@@ -750,47 +752,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       return { success: true };
     } catch (error: any) {
-      console.warn('Cloud function redemption notice, falling back to direct Firestore write:', error);
-      try {
-        const redemptionId = `rdm_${Date.now()}`;
-        const newBalance = user.coinsBalance - coinsSpent;
-        const newRecord: RedemptionRecord = {
-          id: redemptionId,
-          userId: firebaseUser ? firebaseUser.uid : user.uid,
-          payoutMethod,
-          amountCurrency,
-          currency: selectedCurrency,
-          coinsSpent,
-          accountDetails,
-          status: 'pending',
-          requestedAt: new Date().toISOString(),
-        };
-
-        // Write to Firestore redemptions collection
-        await setDoc(doc(db, 'redemptions', redemptionId), newRecord);
-
-        if (firebaseUser) {
-          await updateDoc(doc(db, 'users', firebaseUser.uid), {
-            coinsBalance: newBalance,
-            updatedAt: new Date().toISOString(),
-          }).catch(() => {});
-        }
-
-        setUser(prev => (prev ? {
-          ...prev,
-          coinsBalance: newBalance,
-          updatedAt: new Date().toISOString(),
-        } : prev));
-        setRedemptions(prev => [newRecord, ...prev]);
-
-        playCoinSound();
-        triggerConfetti();
-        return { success: true };
-      } catch (fallbackErr: any) {
-        console.error('Fallback redemption error:', fallbackErr);
-        const message = fallbackErr.message || 'Failed to process redemption';
-        return { success: false, message };
-      }
+      // Server-side transaction handles all validation atomically
+      // No fallback - let the error propagate to the UI for user feedback
+      console.error('Redemption request failed:', error);
+      return {
+        success: false,
+        message: error.message || 'Failed to process redemption. Please try again.'
+      };
     }
   };
 

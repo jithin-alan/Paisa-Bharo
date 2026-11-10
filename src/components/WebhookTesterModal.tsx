@@ -39,7 +39,7 @@ export const WebhookTesterModal: React.FC<Props> = ({ isOpen, onClose }) => {
       timestamp: new Date().toISOString(),
     };
 
-    const result = cintAdapter.processCallback(payload);
+    const result = await cintAdapter.processCallback(payload);
     setResponseLog(result);
 
     if (result.coinsAwarded !== 0) {

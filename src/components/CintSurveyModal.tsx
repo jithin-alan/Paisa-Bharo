@@ -29,8 +29,8 @@ export const CintSurveyModal: React.FC<Props> = ({ survey, onClose }) => {
     setOutcome(status);
 
     setTimeout(async () => {
-      // Process through Cint adapter
-      const result = cintAdapter.processCallback({
+      // Process through Cint adapter (async with signature verification)
+      const result = await cintAdapter.processCallback({
         respondentId: user.uid,
         surveyId: survey.id,
         status: status,
@@ -39,6 +39,7 @@ export const CintSurveyModal: React.FC<Props> = ({ survey, onClose }) => {
         timestamp: new Date().toISOString(),
       });
 
+      // For local dev mode (no real signature), still handle the coins awarding
       if (result.coinsAwarded !== 0) {
         await awardCoins(result.coinsAwarded, `Cint: ${survey.name}`);
       }
