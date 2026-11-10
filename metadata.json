@@ -1,0 +1,6 @@
+{
+  "name": "Paisa Bharo",
+  "description": "Global opinion polls, micro-surveys, and task reward PWA with multi-currency payouts and region-aware offers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

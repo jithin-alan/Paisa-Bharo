@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- PollPe Signature Purple Gradient -->
+    <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8e52f5" />
+      <stop offset="50%" stop-color="#7848f4" />
+      <stop offset="100%" stop-color="#602ce8" />
+    </linearGradient>
+    <!-- PollPe Gold Coin Gradient -->
+    <linearGradient id="goldCoin" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffe44d" />
+      <stop offset="60%" stop-color="#f5b800" />
+      <stop offset="100%" stop-color="#df9a00" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#7848f4" flood-opacity="0.35" />
+    </filter>
+  </defs>
+
+  <!-- Background Base: Clean Rounded White / Lilac -->
+  <rect width="512" height="512" rx="112" fill="#f7f8fc" />
+
+  <!-- Main Purple Circle Badge -->
+  <g filter="url(#shadow)">
+    <circle cx="256" cy="256" r="180" fill="url(#purpleGrad)" />
+  </g>
+
+  <!-- Stylized PollPe P / Swirl Emblem -->
+  <path d="M190 340 L190 190 Q190 160 220 160 L280 160 Q340 160 340 220 Q340 280 280 280 L220 280 Q200 280 190 295" fill="none" stroke="#ffffff" stroke-width="36" stroke-linecap="round" stroke-linejoin="round" />
+  <circle cx="260" cy="220" r="26" fill="#ffffff" />
+
+  <!-- PollPe Accent Gold Coin Badge in bottom right -->
+  <g transform="translate(320, 310)">
+    <circle cx="40" cy="40" r="50" fill="url(#goldCoin)" stroke="#ffffff" stroke-width="8" />
+    <circle cx="40" cy="40" r="38" fill="none" stroke="#fff9a6" stroke-width="3" stroke-dasharray="6 4" />
+    <text x="40" y="52" font-size="34" font-weight="900" font-family="system-ui, sans-serif" fill="#78350f" text-anchor="middle">₹</text>
+  </g>
+</svg>

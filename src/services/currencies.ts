@@ -1,0 +1,405 @@
+import { PayoutMethod } from '../types';
+
+export interface CurrencyConfig {
+  code: string;
+  name: string;
+  symbol: string;
+  flag: string;
+  coinsPerUnit: number; // e.g., 1000 coins = 1 USD / 12 coins = 1 INR
+  format: (amount: number) => string;
+  payoutMethods: PayoutMethod[];
+}
+
+export const SUPPORTED_CURRENCIES: Record<string, CurrencyConfig> = {
+  INR: {
+    code: 'INR',
+    name: 'Indian Rupee',
+    symbol: '₹',
+    flag: '🇮🇳',
+    coinsPerUnit: 12, // 1000 coins ≈ ₹83.33 (approx 12 coins per ₹1)
+    format: (amt) => `₹${amt.toLocaleString('en-IN')}`,
+    payoutMethods: [
+      {
+        id: 'upi',
+        name: 'Instant UPI (PhonePe / GPay / Paytm)',
+        iconName: 'Zap',
+        brandColor: '#5f259f',
+        category: 'direct',
+        currency: 'INR',
+        minCoins: 600,
+        conversionRateText: '600 Coins = ₹50',
+        placeholder: 'username@okhdfcbank or 9876543210@paytm',
+        helpText: 'Funds deposited instantly to your linked bank account via UPI 24x7.',
+        denominations: [
+          { coins: 600, amount: 50 },
+          { coins: 1200, amount: 100 },
+          { coins: 2400, amount: 200 },
+          { coins: 6000, amount: 500 },
+        ],
+      },
+      {
+        id: 'amazon_in',
+        name: 'Amazon Pay Gift Card (India)',
+        iconName: 'ShoppingBag',
+        brandColor: '#ff9900',
+        category: 'giftcard',
+        currency: 'INR',
+        minCoins: 600,
+        conversionRateText: '600 Coins = ₹50 Amazon Voucher',
+        placeholder: 'Your registered Amazon Email ID',
+        helpText: 'Digital voucher code delivered instantly to your email & redemption history.',
+        denominations: [
+          { coins: 600, amount: 50 },
+          { coins: 1200, amount: 100 },
+          { coins: 3000, amount: 250 },
+          { coins: 6000, amount: 500 },
+        ],
+      },
+      {
+        id: 'google_play_in',
+        name: 'Google Play Redeem Code',
+        iconName: 'Play',
+        brandColor: '#01875f',
+        category: 'giftcard',
+        currency: 'INR',
+        minCoins: 1200,
+        conversionRateText: '1200 Coins = ₹100 Code',
+        placeholder: 'Your Google Account Email',
+        helpText: 'Redeem code to buy apps, games, YouTube Premium, or in-app items.',
+        denominations: [
+          { coins: 1200, amount: 100 },
+          { coins: 2400, amount: 200 },
+          { coins: 6000, amount: 500 },
+        ],
+      },
+      {
+        id: 'flipkart_in',
+        name: 'Flipkart Voucher',
+        iconName: 'Tag',
+        brandColor: '#2874f0',
+        category: 'giftcard',
+        currency: 'INR',
+        minCoins: 1200,
+        conversionRateText: '1200 Coins = ₹100 Voucher',
+        placeholder: 'Your Flipkart registered Email',
+        helpText: 'Can be added to Flipkart Gift Card wallet for shopping.',
+        denominations: [
+          { coins: 1200, amount: 100 },
+          { coins: 3000, amount: 250 },
+          { coins: 6000, amount: 500 },
+        ],
+      },
+    ],
+  },
+  USD: {
+    code: 'USD',
+    name: 'US Dollar',
+    symbol: '$',
+    flag: '🇺🇸',
+    coinsPerUnit: 1000, // 1000 coins = $1.00 USD
+    format: (amt) => `$${amt.toFixed(2)}`,
+    payoutMethods: [
+      {
+        id: 'paypal_usd',
+        name: 'PayPal Cash (Global & US)',
+        iconName: 'DollarSign',
+        brandColor: '#00457c',
+        category: 'direct',
+        currency: 'USD',
+        minCoins: 2000,
+        conversionRateText: '2,000 Coins = $2.00 USD',
+        placeholder: 'your.paypal.account@email.com',
+        helpText: 'Sent directly to your verified PayPal email address within 2-4 hours.',
+        denominations: [
+          { coins: 2000, amount: 2.0 },
+          { coins: 5000, amount: 5.0 },
+          { coins: 10000, amount: 10.0 },
+          { coins: 25000, amount: 25.0 },
+        ],
+      },
+      {
+        id: 'amazon_us',
+        name: 'Amazon.com eGift Card',
+        iconName: 'ShoppingBag',
+        brandColor: '#ff9900',
+        category: 'giftcard',
+        currency: 'USD',
+        minCoins: 3000,
+        conversionRateText: '3,000 Coins = $3.00 USD',
+        placeholder: 'Your Amazon Email Address',
+        helpText: 'Electronic claim code delivered instantly for Amazon.com purchases.',
+        denominations: [
+          { coins: 3000, amount: 3.0 },
+          { coins: 5000, amount: 5.0 },
+          { coins: 10000, amount: 10.0 },
+          { coins: 20000, amount: 20.0 },
+        ],
+      },
+      {
+        id: 'crypto_usdt',
+        name: 'Crypto USDT (TRC-20 / Polygon)',
+        iconName: 'Coins',
+        brandColor: '#26a17b',
+        category: 'crypto',
+        currency: 'USD',
+        minCoins: 5000,
+        conversionRateText: '5,000 Coins = 5 USDT',
+        placeholder: 'Your USDT Wallet Address (TRC-20 or Polygon)',
+        helpText: 'Direct stablecoin transfer with zero gas fees deduction.',
+        denominations: [
+          { coins: 5000, amount: 5.0 },
+          { coins: 10000, amount: 10.0 },
+          { coins: 25000, amount: 25.0 },
+          { coins: 50000, amount: 50.0 },
+        ],
+      },
+      {
+        id: 'steam_us',
+        name: 'Steam Wallet Card',
+        iconName: 'Gamepad',
+        brandColor: '#171a21',
+        category: 'giftcard',
+        currency: 'USD',
+        minCoins: 5000,
+        conversionRateText: '5,000 Coins = $5 Steam Wallet',
+        placeholder: 'Your Steam Account Email',
+        helpText: 'Global Steam code to top up games, DLCs, and community items.',
+        denominations: [
+          { coins: 5000, amount: 5.0 },
+          { coins: 10000, amount: 10.0 },
+          { coins: 20000, amount: 20.0 },
+        ],
+      },
+    ],
+  },
+  EUR: {
+    code: 'EUR',
+    name: 'Euro',
+    symbol: '€',
+    flag: '🇪🇺',
+    coinsPerUnit: 1100, // 1100 coins = €1.00
+    format: (amt) => `€${amt.toFixed(2)}`,
+    payoutMethods: [
+      {
+        id: 'paypal_eur',
+        name: 'PayPal Europe (EUR)',
+        iconName: 'DollarSign',
+        brandColor: '#00457c',
+        category: 'direct',
+        currency: 'EUR',
+        minCoins: 2200,
+        conversionRateText: '2,200 Coins = €2.00 EUR',
+        placeholder: 'your.paypal@domain.eu',
+        helpText: 'Sent to your European PayPal account in Euros.',
+        denominations: [
+          { coins: 2200, amount: 2.0 },
+          { coins: 5500, amount: 5.0 },
+          { coins: 11000, amount: 10.0 },
+          { coins: 27500, amount: 25.0 },
+        ],
+      },
+      {
+        id: 'revolut_eur',
+        name: 'Revolut Pay / Revtag',
+        iconName: 'CreditCard',
+        brandColor: '#0075eb',
+        category: 'direct',
+        currency: 'EUR',
+        minCoins: 3300,
+        conversionRateText: '3,300 Coins = €3.00 EUR',
+        placeholder: '@yourRevtag or phone number',
+        helpText: 'Instant peer-to-peer Revolut transfer across Europe.',
+        denominations: [
+          { coins: 3300, amount: 3.0 },
+          { coins: 5500, amount: 5.0 },
+          { coins: 11000, amount: 10.0 },
+        ],
+      },
+      {
+        id: 'amazon_eu',
+        name: 'Amazon Europe Voucher (DE / FR / ES / IT)',
+        iconName: 'ShoppingBag',
+        brandColor: '#ff9900',
+        category: 'giftcard',
+        currency: 'EUR',
+        minCoins: 5500,
+        conversionRateText: '5,500 Coins = €5.00 Voucher',
+        placeholder: 'Your Amazon European Account Email',
+        helpText: 'Usable on all EU Amazon localized stores.',
+        denominations: [
+          { coins: 5500, amount: 5.0 },
+          { coins: 11000, amount: 10.0 },
+          { coins: 22000, amount: 20.0 },
+        ],
+      },
+    ],
+  },
+  GBP: {
+    code: 'GBP',
+    name: 'British Pound',
+    symbol: '£',
+    flag: '🇬🇧',
+    coinsPerUnit: 1300, // 1300 coins = £1.00
+    format: (amt) => `£${amt.toFixed(2)}`,
+    payoutMethods: [
+      {
+        id: 'paypal_gbp',
+        name: 'PayPal UK (GBP)',
+        iconName: 'DollarSign',
+        brandColor: '#00457c',
+        category: 'direct',
+        currency: 'GBP',
+        minCoins: 2600,
+        conversionRateText: '2,600 Coins = £2.00 GBP',
+        placeholder: 'paypal@domain.co.uk',
+        helpText: 'Direct to your UK PayPal account.',
+        denominations: [
+          { coins: 2600, amount: 2.0 },
+          { coins: 6500, amount: 5.0 },
+          { coins: 13000, amount: 10.0 },
+        ],
+      },
+      {
+        id: 'amazon_uk',
+        name: 'Amazon.co.uk Gift Card',
+        iconName: 'ShoppingBag',
+        brandColor: '#ff9900',
+        category: 'giftcard',
+        currency: 'GBP',
+        minCoins: 6500,
+        conversionRateText: '6,500 Coins = £5.00 Voucher',
+        placeholder: 'Your Amazon UK Email',
+        helpText: 'Amazon UK e-voucher code.',
+        denominations: [
+          { coins: 6500, amount: 5.0 },
+          { coins: 13000, amount: 10.0 },
+          { coins: 26000, amount: 20.0 },
+        ],
+      },
+    ],
+  },
+  BRL: {
+    code: 'BRL',
+    name: 'Brazilian Real',
+    symbol: 'R$',
+    flag: '🇧🇷',
+    coinsPerUnit: 180, // 180 coins = R$1.00
+    format: (amt) => `R$ ${amt.toFixed(2).replace('.', ',')}`,
+    payoutMethods: [
+      {
+        id: 'pix_brl',
+        name: 'PIX Instantâneo',
+        iconName: 'Zap',
+        brandColor: '#32bcad',
+        category: 'direct',
+        currency: 'BRL',
+        minCoins: 900,
+        conversionRateText: '900 Moedas = R$ 5,00',
+        placeholder: 'Chave PIX (CPF, E-mail ou Telefone)',
+        helpText: 'Transferência instantânea via PIX 24/7.',
+        denominations: [
+          { coins: 900, amount: 5.0 },
+          { coins: 1800, amount: 10.0 },
+          { coins: 3600, amount: 20.0 },
+          { coins: 9000, amount: 50.0 },
+        ],
+      },
+      {
+        id: 'mercadopago_brl',
+        name: 'Mercado Pago',
+        iconName: 'CreditCard',
+        brandColor: '#009ee3',
+        category: 'direct',
+        currency: 'BRL',
+        minCoins: 1800,
+        conversionRateText: '1.800 Moedas = R$ 10,00',
+        placeholder: 'E-mail cadastrado no Mercado Pago',
+        helpText: 'Saldo creditado na conta Mercado Pago.',
+        denominations: [
+          { coins: 1800, amount: 10.0 },
+          { coins: 3600, amount: 20.0 },
+        ],
+      },
+    ],
+  },
+  AED: {
+    code: 'AED',
+    name: 'UAE Dirham',
+    symbol: 'AED',
+    flag: '🇦🇪',
+    coinsPerUnit: 270, // 270 coins = 1 AED
+    format: (amt) => `${amt.toFixed(2)} AED`,
+    payoutMethods: [
+      {
+        id: 'amazon_ae',
+        name: 'Amazon.ae Gift Card',
+        iconName: 'ShoppingBag',
+        brandColor: '#ff9900',
+        category: 'giftcard',
+        currency: 'AED',
+        minCoins: 2700,
+        conversionRateText: '2,700 Coins = 10 AED',
+        placeholder: 'Your Amazon UAE Email',
+        helpText: 'Redeemable on Amazon UAE online store.',
+        denominations: [
+          { coins: 2700, amount: 10.0 },
+          { coins: 5400, amount: 20.0 },
+          { coins: 13500, amount: 50.0 },
+        ],
+      },
+      {
+        id: 'noon_ae',
+        name: 'Noon Shopping Voucher',
+        iconName: 'Tag',
+        brandColor: '#feee00',
+        category: 'giftcard',
+        currency: 'AED',
+        minCoins: 2700,
+        conversionRateText: '2,700 Coins = 10 AED',
+        placeholder: 'Your Noon registered Email / Phone',
+        helpText: 'Noon e-voucher code delivered instantly.',
+        denominations: [
+          { coins: 2700, amount: 10.0 },
+          { coins: 5400, amount: 20.0 },
+        ],
+      },
+    ],
+  },
+  PHP: {
+    code: 'PHP',
+    name: 'Philippine Peso',
+    symbol: '₱',
+    flag: '🇵🇭',
+    coinsPerUnit: 18,
+    format: (amt) => `₱${amt.toFixed(2)}`,
+    payoutMethods: [
+      {
+        id: 'gcash_php',
+        name: 'GCash Instant Payout',
+        iconName: 'Zap',
+        brandColor: '#005CE6',
+        category: 'direct',
+        currency: 'PHP',
+        minCoins: 900,
+        conversionRateText: '900 Coins = ₱50',
+        placeholder: '09xxxxxxxxx (GCash mobile number)',
+        helpText: 'Sent directly to your verified GCash mobile wallet.',
+        denominations: [
+          { coins: 900, amount: 50.0 },
+          { coins: 1800, amount: 100.0 },
+          { coins: 4500, amount: 250.0 },
+        ],
+      },
+    ],
+  },
+};
+
+export function getCurrencyConfig(code: string): CurrencyConfig {
+  return SUPPORTED_CURRENCIES[code] || SUPPORTED_CURRENCIES.USD;
+}
+
+export function formatCoinsValue(coins: number, currencyCode: string): string {
+  const config = getCurrencyConfig(currencyCode);
+  const value = coins / config.coinsPerUnit;
+  return config.format(value);
+}

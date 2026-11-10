@@ -1,0 +1,160 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (request.auth.token.email != null && (request.auth.token.email == 'admin@paisabharo.com' || request.auth.token.email == 'stickadmob@gmail.com'))
+      );
+    }
+
+    // Helper for validating User document
+    function isValidUser(data) {
+      return data.uid is string && data.uid.size() <= 128 &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 128)) &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100)) &&
+             (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500)) &&
+             (!('coinsBalance' in data) || (data.coinsBalance is int && data.coinsBalance >= 0)) &&
+             (!('referralCode' in data) || (data.referralCode is string && data.referralCode.size() <= 32)) &&
+             data.country is string && data.country.size() <= 8 &&
+             data.currency is string && data.currency.size() <= 8 &&
+             data.language is string && data.language.size() <= 8 &&
+             // CRITICAL SECURITY: Prevent users from setting admin fields
+             !data.keys().hasAny(['isAdmin', 'role', 'isSuperadmin', 'permissions']);
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if (isSignedIn() && resource.data.uid == request.auth.uid) || isAdmin();
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().uid == request.auth.uid &&
+                       isValidUser(incoming());
+      allow update: if (isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().uid == existing().uid &&
+                       isValidUser(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'displayName', 'photoURL', 'coinsBalance', 'lifetimeEarnings',
+                         'streakDays', 'lastCheckInDate', 'country', 'currency',
+                         'language', 'referredBy', 'updatedAt'
+                       ])) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Polls Collection (Public readable for community participation)
+    match /polls/{pollId} {
+      allow get, list: if true;
+      allow write: if isAdmin();
+    }
+
+    // Poll Votes Collection
+    function isValidPollVote(data) {
+      return data.pollId is string && data.pollId.size() <= 128 &&
+             data.userId == request.auth.uid &&
+             data.selectedOptionIndex is int && data.selectedOptionIndex >= 0 &&
+             data.earnedCoins is int && data.earnedCoins >= 0 && data.earnedCoins <= 500;
+    }
+
+    match /poll_votes/{voteId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isSignedIn() &&
+                       isValidId(voteId) &&
+                       isValidPollVote(incoming());
+      allow update, delete: if isAdmin();
+    }
+
+    // Offers Collection
+    match /offers/{offerId} {
+      allow get, list: if true;
+      allow write: if isAdmin();
+    }
+
+    // User Tasks Collection
+    function isValidUserTask(data) {
+      return data.offerId is string && data.offerId.size() <= 128 &&
+             data.userId == request.auth.uid &&
+             data.status in ['in_progress', 'completed', 'verified'] &&
+             data.rewardCoins is int && data.rewardCoins >= 0;
+    }
+
+    match /user_tasks/{taskId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isSignedIn() &&
+                       isValidId(taskId) &&
+                       isValidUserTask(incoming());
+      allow update: if (isSignedIn() &&
+                       resource.data.userId == request.auth.uid &&
+                       incoming().userId == existing().userId &&
+                       incoming().offerId == existing().offerId &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['status', 'completedAt', 'updatedAt'])) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Redemptions Collection
+    function isValidRedemption(data) {
+      return data.userId == request.auth.uid &&
+             data.payoutMethod is string && data.payoutMethod.size() <= 64 &&
+             data.currency is string && data.currency.size() <= 8 &&
+             data.coinsSpent is int && data.coinsSpent > 0 &&
+             data.accountDetails is string && data.accountDetails.size() <= 256 &&
+             data.status == 'pending';
+    }
+
+    match /redemptions/{redemptionId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isSignedIn() &&
+                       isValidId(redemptionId) &&
+                       isValidRedemption(incoming());
+      allow update, delete: if isAdmin();
+    }
+
+    // System Settings Collection (Global app settings managed by admin)
+    match /system_settings/{settingId} {
+      allow get, list: if true;
+      allow write: if isAdmin();
+    }
+
+    // Admins Collection
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Provisioned via server or direct admin
+    }
+
+    // Test connection doc
+    match /test/{docId} {
+      allow get: if true;
+      allow write: if false;
+    }
+  }
+}

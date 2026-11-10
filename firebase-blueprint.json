@@ -1,0 +1,151 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Represents an authenticated user in Paisa Bharo with coin balance, streak, and preferences.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
+        "photoURL": { "type": "string", "maxLength": 512 },
+        "coinsBalance": { "type": "integer" },
+        "lifetimeEarnings": { "type": "integer" },
+        "streakDays": { "type": "integer" },
+        "lastCheckInDate": { "type": "string", "maxLength": 32 },
+        "referralCode": { "type": "string", "maxLength": 32 },
+        "referredBy": { "type": "string", "maxLength": 32 },
+        "country": { "type": "string", "maxLength": 8 },
+        "currency": { "type": "string", "maxLength": 8 },
+        "language": { "type": "string", "maxLength": 8 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "coinsBalance", "referralCode", "country", "currency", "language", "createdAt"]
+    },
+    "Poll": {
+      "title": "Poll",
+      "description": "A micro-poll or opinion survey available for users to answer and earn coins.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 256 },
+        "category": { "type": "string", "maxLength": 64 },
+        "options": { "type": "array" },
+        "rewardCoins": { "type": "integer" },
+        "totalVotes": { "type": "integer" },
+        "country": { "type": "string", "maxLength": 8 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "category", "rewardCoins", "totalVotes"]
+    },
+    "PollVote": {
+      "title": "PollVote",
+      "description": "User vote recorded for a poll to guarantee one-time reward per user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "pollId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "selectedOptionIndex": { "type": "integer" },
+        "earnedCoins": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "pollId", "userId", "selectedOptionIndex", "earnedCoins"]
+    },
+    "Offer": {
+      "title": "Offer",
+      "description": "Region-aware task, survey, or partner promotion offering coin rewards.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 256 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "category": { "type": "string", "maxLength": 64 },
+        "rewardCoins": { "type": "integer" },
+        "provider": { "type": "string", "maxLength": 128 },
+        "difficulty": { "type": "string", "maxLength": 32 },
+        "timeEstimate": { "type": "string", "maxLength": 32 },
+        "country": { "type": "string", "maxLength": 8 }
+      },
+      "required": ["id", "title", "category", "rewardCoins", "provider"]
+    },
+    "UserTask": {
+      "title": "UserTask",
+      "description": "Tracks a task or offer initiated or completed by a user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "offerId": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["in_progress", "completed", "verified"] },
+        "rewardCoins": { "type": "integer" },
+        "completedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "offerId", "status", "rewardCoins"]
+    },
+    "Redemption": {
+      "title": "Redemption",
+      "description": "A payout redemption requested by user (UPI, PayPal, Amazon gift card, Crypto, etc.).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "payoutMethod": { "type": "string", "maxLength": 64 },
+        "amountCurrency": { "type": "number" },
+        "currency": { "type": "string", "maxLength": 8 },
+        "coinsSpent": { "type": "integer" },
+        "accountDetails": { "type": "string", "maxLength": 256 },
+        "status": { "type": "string", "enum": ["pending", "processing", "completed", "rejected"] },
+        "requestedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "payoutMethod", "amountCurrency", "currency", "coinsSpent", "accountDetails", "status"]
+    },
+    "SystemSettings": {
+      "title": "SystemSettings",
+      "description": "Global application configuration controlled by administrators (active offerwall, maintenance mode, coin limits).",
+      "type": "object",
+      "properties": {
+        "offerwallProvider": { "type": "string", "enum": ["adgem", "bitlabs"] },
+        "maintenanceMode": { "type": "boolean" },
+        "maintenanceMessage": { "type": "string", "maxLength": 500 },
+        "maxDailyCoins": { "type": "integer" },
+        "streakMultiplier": { "type": "number" },
+        "referralBonus": { "type": "integer" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "updatedBy": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["offerwallProvider", "maintenanceMode", "maxDailyCoins"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profile with coins balance and account state."
+    },
+    "/polls/{pollId}": {
+      "schema": { "$ref": "#/entities/Poll" },
+      "description": "Global and region-specific micro polls."
+    },
+    "/poll_votes/{voteId}": {
+      "schema": { "$ref": "#/entities/PollVote" },
+      "description": "User responses to polls."
+    },
+    "/offers/{offerId}": {
+      "schema": { "$ref": "#/entities/Offer" },
+      "description": "Active tasks and partner offers available for users."
+    },
+    "/user_tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/UserTask" },
+      "description": "Tasks taken up by users."
+    },
+    "/redemptions/{redemptionId}": {
+      "schema": { "$ref": "#/entities/Redemption" },
+      "description": "Redemption records for cashouts."
+    },
+    "/system_settings/{settingId}": {
+      "schema": { "$ref": "#/entities/SystemSettings" },
+      "description": "Global app parameters and admin configurations."
+    }
+  }
+}
