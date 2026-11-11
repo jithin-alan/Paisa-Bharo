@@ -132,9 +132,9 @@ export const DealsCashbackView: React.FC = () => {
 
       {/* Deals Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {deals.map((deal) => (
+        {deals.map((deal, idx) => (
           <div
-            key={deal.id}
+            key={`deal-${deal.id}-${idx}`}
             className="bg-white rounded-[24px] border border-[#e5dcfa] p-5 shadow-[0_4px_20px_rgba(120,72,244,0.05)] hover:border-[#7848f4] hover:shadow-lg transition flex flex-col justify-between space-y-4"
           >
             {/* Top Info */}

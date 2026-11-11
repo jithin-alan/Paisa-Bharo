@@ -430,8 +430,8 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {filteredRedemptions.map(r => (
-                      <tr key={r.id} className="hover:bg-gray-50/60 transition">
+                    {filteredRedemptions.map((r, idx) => (
+                      <tr key={`admin-redemption-${r.id}-${idx}`} className="hover:bg-gray-50/60 transition">
                         <td className="py-3">
                           <p className="font-mono font-bold text-gray-900">{r.id.slice(0, 10)}…</p>
                           <p className="text-[10px] text-gray-400 font-mono truncate max-w-[140px]">{r.userId}</p>
@@ -761,8 +761,8 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {allUsers.length > 0 ? (
-                    allUsers.map(u => (
-                      <tr key={u.uid} className="hover:bg-gray-50/60">
+                    allUsers.map((u, idx) => (
+                      <tr key={`user-${u.uid || idx}-${idx}`} className="hover:bg-gray-50/60">
                         <td className="py-2.5">
                           <p className="font-mono text-gray-900 font-bold">{u.email || u.uid.slice(0, 12)}</p>
                           <p className="font-mono text-[10px] text-gray-400">{u.uid}</p>
@@ -829,7 +829,7 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
             </div>
 
             <div className="grid gap-2.5 max-h-96 overflow-y-auto pr-1">
-              {apiEndpoints.map((ep) => {
+              {apiEndpoints.map((ep, idx) => {
                 const result = apiTestResults[ep.id];
                 const status = result?.status || 'idle';
                 const config = STATUS_CONFIGS[status];
@@ -837,7 +837,7 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
 
                 return (
                   <div
-                    key={ep.id}
+                    key={`ep-${ep.id}-${idx}`}
                     className={`p-3 rounded-2xl border ${config.bg} ${config.border} flex items-center justify-between`}
                   >
                     <div className="flex items-center gap-3">

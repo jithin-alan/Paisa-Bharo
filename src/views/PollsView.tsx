@@ -192,9 +192,9 @@ export const PollsView: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {surveys.map((survey) => (
+          {surveys.map((survey, idx) => (
             <div
-              key={survey.id}
+              key={`survey-${survey.id}-${idx}`}
               className={`rounded-[24px] border p-5 flex flex-col justify-between transition-all ${
                 survey.completed
                   ? 'bg-gray-50 border-gray-200 opacity-60'
@@ -279,12 +279,12 @@ export const PollsView: React.FC = () => {
 
         {/* Polls Feed in Clean White Cards */}
         <div className="space-y-4">
-          {filteredPolls.map((poll) => {
+          {filteredPolls.map((poll, idx) => {
             const hasVoted = poll.userVotedIndex !== undefined;
 
             return (
               <div
-                key={poll.id}
+                key={`poll-${poll.id}-${idx}`}
                 className="rounded-[26px] bg-white border border-[#e5dcfa] hover:border-[#7848f4]/60 p-5 sm:p-6 shadow-[0_4px_20px_rgba(120,72,244,0.05)] transition-all space-y-4"
               >
                 {/* Poll Card Header */}

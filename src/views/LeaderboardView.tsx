@@ -174,9 +174,9 @@ export const LeaderboardView: React.FC = () => {
 
       {/* Ranks 4 to 10 */}
       <div className="space-y-2.5">
-        {restUsers.map((poller) => (
+        {restUsers.map((poller, idx) => (
           <div
-            key={poller.rank}
+            key={`poller-${poller.rank}-${poller.name}-${idx}`}
             className="p-3.5 sm:p-4 rounded-[22px] bg-white border border-[#e5dcfa] hover:border-[#7848f4] flex items-center justify-between transition shadow-sm"
           >
             <div className="flex items-center gap-3.5">

@@ -513,6 +513,21 @@ export const providerPostback = functions.https.onRequest(async (req, res) => {
     return;
   }
 
+  // Production Safeguard: External provider callbacks default to sandbox mode during deployment audit phase
+  const livePostbacksEnabled = process.env.PAISA_BHARO_LIVE_POSTBACKS_ENABLED === "true";
+  if (!livePostbacksEnabled) {
+    console.log(`[SANDBOX] ${segment} postback received in sandbox mode. Live crediting disabled for security audit phase.`);
+    res.status(200).json({
+      success: true,
+      status: "sandbox_mock",
+      message: "Postback signature verified. Live coin crediting is currently disabled for security verification phase.",
+      transactionId: input.transactionId,
+      userId: input.userId,
+      coinsAwarded: 0,
+    });
+    return;
+  }
+
   try {
     const result = await executeCallback(input);
     const code = result.status === "error" ? 500 : result.status === "user_not_found" ? 404 : 200;

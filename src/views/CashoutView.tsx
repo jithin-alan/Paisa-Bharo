@@ -150,12 +150,12 @@ export const CashoutView: React.FC = () => {
 
           {/* Methods Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {currencyConfig.payoutMethods.map((method) => {
+            {currencyConfig.payoutMethods.map((method, idx) => {
               const canAffordMin = coinsBalance >= method.minCoins;
 
               return (
                 <div
-                  key={method.id}
+                  key={`method-${method.id}-${idx}`}
                   onClick={() => handleOpenRedeem(method)}
                   className={`bg-white rounded-[24px] border p-5 sm:p-6 flex flex-col justify-between transition-all cursor-pointer shadow-[0_4px_20px_rgba(120,72,244,0.05)] hover:shadow-lg ${
                     canAffordMin
@@ -222,9 +222,9 @@ export const CashoutView: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-2.5">
-              {redemptions.map((item) => (
+              {redemptions.map((item, idx) => (
                 <div
-                  key={item.id}
+                  key={`redemption-${item.id}-${idx}`}
                   className="p-4 sm:p-5 rounded-[22px] bg-white border border-[#e5dcfa] flex items-center justify-between shadow-sm"
                 >
                   <div className="flex items-center gap-3.5">

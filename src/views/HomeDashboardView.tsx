@@ -220,9 +220,9 @@ export const HomeDashboardView: React.FC<Props> = ({
 
             {/* Quest items list */}
             <div className="space-y-3 pt-1">
-              {questTasks.map((t) => (
+              {questTasks.map((t, idx) => (
                 <div
-                  key={t.id}
+                  key={`task-${t.id}-${idx}`}
                   onClick={() => handleToggleTask(t.id)}
                   className="flex items-center gap-3 py-2 border-b border-gray-100 last:border-0 cursor-pointer group"
                 >
@@ -246,9 +246,9 @@ export const HomeDashboardView: React.FC<Props> = ({
 
         {/* 2x2 Grid of Survey Partners (matches screenshot right) */}
         <div className="md:col-span-6 grid grid-cols-2 gap-3.5">
-          {surveyPartners.map((p) => (
+          {surveyPartners.map((p, idx) => (
             <div
-              key={p.id}
+              key={`partner-${p.id}-${idx}`}
               onClick={() => {
                 if (p.id === 'bitlabs') {
                   onOpenOfferwall('bitlabs');

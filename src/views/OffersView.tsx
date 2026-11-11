@@ -116,12 +116,12 @@ export const OffersView: React.FC = () => {
 
       {/* Offers Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filteredOffers.map((offer) => {
+        {filteredOffers.map((offer, idx) => {
           const isDone = claimedTasks.includes(offer.id);
 
           return (
             <div
-              key={offer.id}
+              key={`offer-${offer.id}-${idx}`}
               onClick={() => setSelectedOffer(offer)}
               className={`bg-white rounded-[24px] border p-5 flex items-center justify-between gap-4 transition-all cursor-pointer shadow-[0_4px_20px_rgba(120,72,244,0.05)] hover:shadow-md ${
                 isDone
