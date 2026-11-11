@@ -1,6 +1,6 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import { db, getUserRef } from "./helpers";
+import { db, getUserRef, isAdminUser } from "./helpers";
 /**
  * Referral reward processing configuration
  */
@@ -179,7 +179,7 @@ export const processReferralReward = functions.https.onCall(async (request, resp
     }
     // Verify admin access or owner access
     const isOwner = rewardData.userId === context.uid || rewardData.referrerId === context.uid;
-    if (!isOwner && !(await isAdminUser(context.uid))) {
+    if (!isOwner && !isAdminUser(context)) {
         throw new functions.https.HttpsError("permission-denied", "Not authorized to process this reward");
     }
     await db.runTransaction(async (transaction) => {
@@ -233,11 +233,4 @@ export const processReferralReward = functions.https.onCall(async (request, resp
     });
     return { success: true, message: "Reward processed successfully" };
 });
-/**
- * Helper to check if user is admin
- */
-async function isAdminUser(userId) {
-    const adminDoc = await db.collection("admins").doc(userId).get();
-    return adminDoc.exists;
-}
 //# sourceMappingURL=processReferralRewards.js.map

@@ -36,6 +36,8 @@ interface Props {
   setIsLogin: (v: boolean) => void;
 
   emailError: string;
+  googleLoading?: boolean;
+  googleError?: string;
 }
 
 export const LandingPage: React.FC<Props> = ({
@@ -63,6 +65,8 @@ export const LandingPage: React.FC<Props> = ({
   isLogin,
   setIsLogin,
   emailError,
+  googleLoading = false,
+  googleError = '',
 }) => {
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -524,16 +528,48 @@ export const LandingPage: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={onGoogleLogin}
-                className="w-full py-3 rounded-xl border-2 border-[#7848f4] bg-white text-[#7848f4] font-bold flex items-center justify-center gap-3"
+                disabled={googleLoading}
+                className="w-full py-3 rounded-xl border-2 border-[#7848f4] bg-white text-[#7848f4] font-bold flex items-center justify-center gap-3 hover:bg-[#f7f4fe] transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24">
-                  <path
-                    fill="#EA4335"
-                    d="M12 10.2v3.6h5.1c-.2 1.2-1.5 3.6-5.1 3.6-3.1 0-5.6-2.6-5.6-5.8S8.9 5.8 12 5.8c1.7 0 2.8.7 3.5 1.3l2.4-2.3C16.7 3.6 14.6 2.8 12 2.8 6.9 2.8 2.9 6.8 2.9 12s4 9.2 9.1 9.2c5.2 0 8.8-3.7 8.8-9 0-.6-.1-1-.2-1.4H12z"
-                  />
-                </svg>
-                CONTINUE WITH GOOGLE
+                {googleLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-[#7848f4] border-t-transparent rounded-full animate-spin" />
+                    <span>OPENING GOOGLE SIGN-IN...</span>
+                  </div>
+                ) : (
+                  <>
+                    <svg width="18" height="18" viewBox="0 0 24 24">
+                      <path
+                        fill="#EA4335"
+                        d="M12 10.2v3.6h5.1c-.2 1.2-1.5 3.6-5.1 3.6-3.1 0-5.6-2.6-5.6-5.8S8.9 5.8 12 5.8c1.7 0 2.8.7 3.5 1.3l2.4-2.3C16.7 3.6 14.6 2.8 12 2.8 6.9 2.8 2.9 6.8 2.9 12s4 9.2 9.1 9.2c5.2 0 8.8-3.7 8.8-9 0-.6-.1-1-.2-1.4H12z"
+                      />
+                    </svg>
+                    <span>CONTINUE WITH GOOGLE</span>
+                  </>
+                )}
               </button>
+
+              {googleError && (
+                <div className="mt-3 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs text-left space-y-2">
+                  <div className="font-semibold flex items-center gap-1.5">
+                    <span className="text-red-500 font-bold">!</span> Google Sign-In Notice
+                  </div>
+                  <div>{googleError}</div>
+                  {(googleError.toLowerCase().includes('pop-up') ||
+                    googleError.toLowerCase().includes('tab') ||
+                    googleError.toLowerCase().includes('domain') ||
+                    googleError.toLowerCase().includes('block')) && (
+                    <a
+                      href={window.location.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block mt-1 text-xs text-[#7848f4] font-bold underline hover:text-[#5d31cf]"
+                    >
+                      Open app in a new browser tab &rarr;
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -555,8 +591,8 @@ export const LandingPage: React.FC<Props> = ({
               'amazon',
               'PhonePe',
               'zepto',
-            ].map((item) => (
-              <div key={item} className="font-bold text-gray-600">
+            ].map((item, idx) => (
+              <div key={`brand-${idx}-${item}`} className="font-bold text-gray-600">
                 {item}
               </div>
             ))}

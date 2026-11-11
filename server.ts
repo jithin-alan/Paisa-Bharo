@@ -2,17 +2,19 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { initializeApp } from 'firebase-admin/app';
-import { getFunctions } from 'firebase-admin/functions';
 import { createServer } from 'vite';
-import { cintAdapter } from './src/providers/cintAdapter.ts';
+import { cintAdapter, verifySignature as verifyCintSignature } from './src/providers/cintAdapter.ts';
 import {
   adGemAdapter,
   bitLabsAdapter,
   getActiveOfferwallProvider,
   setActiveOfferwallProvider,
   getOfferwallAdapter,
+  verifyAdGemSignature,
+  verifyBitLabsSignature,
 } from './src/providers/offerwallAdapter.ts';
 import { affiliateDealsAdapter } from './src/providers/affiliateDealsAdapter.ts';
+import { createRateLimiter } from './src/middleware/rateLimiter.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,23 +36,39 @@ function validateNumeric(value: any, name: string, min: number = 0, max: number 
   return { valid: true, parsed: num };
 }
 
-/**
- * Get Firebase callable function client
- * In development, connects to local emulator
- */
-async function getFunctionsCallable(name: string) {
-  initializeApp();
-  const functions = getFunctions();
-  const region = process.env.FIREBASE_REGION || 'us-central1';
-  return functions.httpsCallable(region, name);
-}
-
 async function startServer() {
   const app = express();
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
+
+  // Sliding-window rate limiters to defend against API abuse, replay attacks, and click-fraud
+  const generalApiLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 120, // 120 requests per minute
+    message: 'Too many API requests, please slow down.',
+  });
+
+  const callbackLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 30, // 30 requests per minute for sensitive callbacks & postbacks
+    message: 'Too many callback or postback requests, please try again later.',
+  });
+
+  const clickLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 25, // 25 clicks per minute
+    message: 'Too many deal clicks requested, please slow down.',
+  });
+
+  // Apply general API rate limiting
+  app.use('/api', generalApiLimiter);
+
+  // Apply stricter rate limiting on callback and postback endpoints
+  app.use('/api/callbacks', callbackLimiter);
+  app.use('/api/postbacks', callbackLimiter);
+  app.use('/api/provider/callback', callbackLimiter);
 
   // Request logger for callbacks inspection
   app.use((req, _res, next) => {
@@ -125,36 +143,21 @@ async function startServer() {
       return res.status(400).json({ success: false, error: `Invalid status: ${status}` });
     }
 
-    // Forward to Cloud Functions for secure processing
     try {
-      const processCallback = await getFunctionsCallable('processProviderCallback');
-
-      const result = await processCallback({
-        provider: 'cint',
-        transactionId: `cint_${surveyId}_${respondentId}_${Date.now()}`,
-        userId: respondentId,
+      const result = await cintAdapter.processCallback({
+        respondentId,
+        surveyId,
+        status,
+        rewardUsd,
         coinsAwarded: validateNumeric(coinsAwarded, 'coinsAwarded').parsed || 400,
-        reason: `Cint survey ${status}`,
-        metadata: {
-          surveyId,
-          status,
-          rewardUsd,
-          secureHash,
-          timestamp,
-        },
-        signature: secureHash,
+        secureHash,
+        timestamp,
       });
 
-      res.json(result.data);
+      res.json(result);
     } catch (err: any) {
       console.error('[Cint Callback] Error processing callback:', err);
-      if (err.code === 'resource-exhausted' || err.message?.includes('signature')) {
-        res.status(403).json({ success: false, error: 'Signature verification failed' });
-      } else if (err.code === 'permission-denied') {
-        res.status(403).json({ success: false, error: 'Permission denied' });
-      } else {
-        res.status(500).json({ success: false, error: err.message || 'Internal error' });
-      }
+      res.status(500).json({ success: false, error: err.message || 'Internal error' });
     }
   });
 
@@ -176,9 +179,7 @@ async function startServer() {
       // In production, this would be a direct HTTPS call to Firebase Functions
       // For now, we verify locally and forward
       if (process.env.CINT_API_KEY) {
-        const isValid = await cintAdapter.verifySignature
-          ? await Promise.resolve().then(() => true)  // Signature verified by function
-          : true;
+        const isValid = await verifyCintSignature(req.body, process.env.CINT_API_KEY!);
 
         if (!isValid) {
           console.warn('[SECURITY] Invalid Cint signature received');
@@ -266,9 +267,7 @@ async function startServer() {
 
     // Verify signature before forwarding
     if (process.env.ADGEM_SECRET) {
-      const isValid = await adGemAdapter.verifySignature
-        ? await adGemAdapter.verifySignature({ ...req.body }, process.env.ADGEM_SECRET!)
-        : true;
+      const isValid = await verifyAdGemSignature({ ...req.body }, process.env.ADGEM_SECRET!);
 
       if (!isValid) {
         console.warn(`[SECURITY] Invalid AdGem signature for user ${user_id}, tx ${transaction_id}`);
@@ -336,9 +335,7 @@ async function startServer() {
 
     // Verify signature
     if (process.env.BITLABS_SECRET) {
-      const isValid = await bitLabsAdapter.verifySignature
-        ? await bitLabsAdapter.verifySignature({ ...req.body }, process.env.BITLABS_SECRET!)
-        : true;
+      const isValid = await verifyBitLabsSignature({ ...req.body }, process.env.BITLABS_SECRET!);
 
       if (!isValid) {
         console.warn(`[SECURITY] Invalid BitLabs signature for user ${uid}, tx ${tx}`);
@@ -404,7 +401,7 @@ async function startServer() {
   });
 
   // Generate tracked outbound link
-  app.post('/api/deals/click', async (req, res) => {
+  app.post('/api/deals/click', clickLimiter, async (req, res) => {
     try {
       const { dealId, userId } = req.body;
 
@@ -477,11 +474,12 @@ async function startServer() {
       clickId,
       userId,
       merchantName,
-      saleAmountUsd: saleVal.parsed,
-      commissionUsd: commVal.parsed,
-      coinsAwarded: coinsVal.parsed,
+      saleAmountUsd: saleVal.parsed!,
+      commissionUsd: commVal.parsed!,
+      coinsAwarded: coinsVal.parsed!,
       status,
       signature,
+      eventDate: new Date().toISOString(),
     };
 
     // Process via affiliateDealsAdapter

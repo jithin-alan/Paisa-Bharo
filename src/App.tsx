@@ -46,6 +46,7 @@ import { CintSurvey } from './providers/types';
 import { PollPeCoin } from './components/Illustrations';
 import { AdminConfigView } from './views/AdminConfigView';
 import { useIsAdmin } from './hooks/useIsAdmin';
+import { calculateStreakStatus } from './services/streakService';
 
 type TabType = 'home' | 'polls' | 'offers' | 'cashout' | 'leaderboard' | 'refer' | 'settings' | 'deals';
 
@@ -87,8 +88,19 @@ const AppContent: React.FC = () => {
     clearToast,
     logout,
     loginWithGoogle,
+    googleAuthLoading,
     systemSettings,
   } = useApp();
+
+  const [googleError, setGoogleError] = useState('');
+
+  const handleGoogleLogin = async () => {
+    setGoogleError('');
+    const res = await loginWithGoogle();
+    if (!res.success && res.error) {
+      setGoogleError(res.error);
+    }
+  };
 
   // Admin status is determined by custom claims via the useIsAdmin hook
   const { isAdmin, checked: adminChecked } = useIsAdmin();
@@ -256,7 +268,9 @@ const AppContent: React.FC = () => {
   if (!user) {
     return (
       <LandingPage
-        onGoogleLogin={loginWithGoogle}
+        onGoogleLogin={handleGoogleLogin}
+        googleLoading={googleAuthLoading}
+        googleError={googleError}
         onSendOtp={sendOtp}
         onVerifyOtp={verifyOtp}
         onEmailLogin={handleEmailLogin}
@@ -389,17 +403,34 @@ const AppContent: React.FC = () => {
               <Moon className="w-4 h-4" />
             </button>
 
-            {/* Streak Icon Button with Purple Badge */}
-            <button
-              onClick={() => setActiveTab('polls')}
-              className="relative w-9 h-9 rounded-xl border border-[#e5dcfa] bg-white text-gray-400 hover:text-orange-500 flex items-center justify-center transition cursor-pointer shadow-sm"
-              title={`${user?.streakDays ?? 0} Day Streak`}
-            >
-              <Flame className="w-4 h-4" />
-              <span className="absolute -top-1.5 -right-1.5 bg-[#7848f4] text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
-                {user?.streakDays ?? 0}
-              </span>
-            </button>
+            {/* Streak Icon Button with Dynamic Badge */}
+            {(() => {
+              const streakStatus = calculateStreakStatus(user?.lastCheckInDate, user?.streakDays, user?.timezone);
+              return (
+                <button
+                  onClick={() => setActiveTab('polls')}
+                  className="relative w-9 h-9 rounded-xl border border-[#e5dcfa] bg-white text-gray-400 hover:text-orange-500 flex items-center justify-center transition cursor-pointer shadow-sm"
+                  title={
+                    streakStatus.isStreakBroken
+                      ? 'Streak expired (missed yesterday) - check in to restart'
+                      : `${streakStatus.effectiveStreak} Day Streak`
+                  }
+                >
+                  <Flame
+                    className={`w-4 h-4 ${
+                      streakStatus.effectiveStreak > 0 ? 'text-amber-500 fill-amber-500' : 'text-gray-400'
+                    }`}
+                  />
+                  <span
+                    className={`absolute -top-1.5 -right-1.5 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-sm ${
+                      streakStatus.isStreakBroken ? 'bg-amber-500' : 'bg-[#7848f4]'
+                    }`}
+                  >
+                    {streakStatus.effectiveStreak}
+                  </span>
+                </button>
+              );
+            })()}
 
             {/* XP Badge */}
             <div className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-[#e5dcfa] bg-white text-xs font-bold text-[#7848f4] shadow-sm">

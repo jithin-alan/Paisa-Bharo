@@ -5,7 +5,7 @@ import { claimDailyCheckIn } from "./dailyCheckin";
 import { votePoll } from "./pollVote";
 import { completeSurvey, requestSurveyVerification } from "./surveyComplete";
 import { claimScratchCard } from "./scratchCard";
-import { requestRedemption } from "./redemption";
+import { requestRedemption, reviewRedemption } from "./redemption";
 import { applyReferralCode } from "./referral";
 import { awardCoins } from "./admin";
 import { processPendingReferralRewards, processReferralReward } from "./processReferralRewards";
@@ -19,6 +19,7 @@ export {
   requestSurveyVerification,
   claimScratchCard,
   requestRedemption,
+  reviewRedemption,
   applyReferralCode,
   awardCoins,
   processPendingReferralRewards,

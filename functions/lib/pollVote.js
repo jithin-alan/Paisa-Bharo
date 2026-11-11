@@ -31,10 +31,18 @@ export const votePoll = functions.https.onCall(async (request, response) => {
             throw new functions.https.HttpsError("not-found", "Poll not found");
         }
         const pollData = pollDoc.data();
+        // Server-side validation of poll status
+        if (pollData.status && pollData.status !== 'active') {
+            throw new functions.https.HttpsError("failed-precondition", "Poll is closed or inactive");
+        }
         if (optionIndex >= pollData.options.length) {
             throw new functions.https.HttpsError("invalid-argument", "Invalid option index");
         }
         const rewardCoins = pollData.rewardCoins || 0;
+        // Server-side validation of reward limits
+        if (rewardCoins < 0 || rewardCoins > 500) {
+            throw new functions.https.HttpsError("invalid-argument", "Invalid poll reward limit");
+        }
         // Record the vote
         transaction.set(voteRef, {
             pollId,

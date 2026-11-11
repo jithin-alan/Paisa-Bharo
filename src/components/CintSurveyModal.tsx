@@ -117,7 +117,7 @@ export const CintSurveyModal: React.FC<Props> = ({ survey, onClose }) => {
                   <span>Incidence Rate: <strong>{survey.incidenceRate}% qualification</strong></span>
                 </div>
                 {survey.qualificationCriteria?.map((crit, idx) => (
-                  <div key={idx} className="flex items-center gap-2 text-gray-600">
+                  <div key={`crit-${idx}`} className="flex items-center gap-2 text-gray-600">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#7848f4]" />
                     <span>{crit}</span>
                   </div>
@@ -153,9 +153,9 @@ export const CintSurveyModal: React.FC<Props> = ({ survey, onClose }) => {
             </h4>
 
             <div className="space-y-2">
-              {['Multiple times daily', '2-4 times a week', 'Once a week', 'Rarely / Never'].map((opt) => (
+              {['Multiple times daily', '2-4 times a week', 'Once a week', 'Rarely / Never'].map((opt, idx) => (
                 <button
-                  key={opt}
+                  key={`q1-${idx}-${opt}`}
                   onClick={() => setAnswer1(opt)}
                   className={`w-full text-left p-3.5 rounded-2xl border text-xs font-bold transition cursor-pointer ${
                     answer1 === opt
@@ -196,9 +196,9 @@ export const CintSurveyModal: React.FC<Props> = ({ survey, onClose }) => {
             </h4>
 
             <div className="space-y-2">
-              {['Direct UPI / Bank Transfer Cash', 'Amazon / Flipkart Gift Cards', 'Gaming Credits & Skins', 'Charity / Donations'].map((opt) => (
+              {['Direct UPI / Bank Transfer Cash', 'Amazon / Flipkart Gift Cards', 'Gaming Credits & Skins', 'Charity / Donations'].map((opt, idx) => (
                 <button
-                  key={opt}
+                  key={`q2-${idx}-${opt}`}
                   onClick={() => setAnswer2(opt)}
                   className={`w-full text-left p-3.5 rounded-2xl border text-xs font-bold transition cursor-pointer ${
                     answer2 === opt

@@ -197,8 +197,10 @@ export const applyReferralCode = functions.https.onCall(async (request, response
       throw new functions.https.HttpsError("invalid-argument", "Cannot use your own referral code");
     }
 
-    // Already applied
-    if (userData.referredBy) {
+    // Check durable referral claim record to guarantee uniqueness even across concurrent requests
+    const claimRef = db.collection("referral_claims").doc(userId);
+    const claimDoc = await transaction.get(claimRef);
+    if (claimDoc.exists || userData.referredBy) {
       throw new functions.https.HttpsError("already-exists", "Already applied a referral code");
     }
 
@@ -321,6 +323,15 @@ export const applyReferralCode = functions.https.onCall(async (request, response
       amount: bonus,
       type: "referral_reward",
       status: shouldIssueImmediately ? "completed" : "pending",
+    });
+
+    // Durable referral claim record preventing future duplicate claims
+    transaction.set(claimRef, {
+      userId,
+      referrerId,
+      referralCode: formattedCode,
+      bonus,
+      claimedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
     // Update user (new user who applied code)

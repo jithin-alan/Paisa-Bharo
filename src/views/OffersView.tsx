@@ -223,7 +223,7 @@ export const OffersView: React.FC = () => {
               </h4>
               <div className="space-y-2 bg-gray-50 p-4 rounded-2xl border border-gray-100 text-xs text-gray-700">
                 {selectedOffer.steps.map((step, idx) => (
-                  <div key={idx} className="flex items-start gap-2.5">
+                  <div key={`step-${idx}-${step.substring(0, 10)}`} className="flex items-start gap-2.5">
                     <span className="w-5 h-5 rounded-full bg-[#7848f4] text-white font-black flex items-center justify-center shrink-0 text-xs">
                       {idx + 1}
                     </span>

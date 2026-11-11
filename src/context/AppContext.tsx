@@ -14,8 +14,10 @@ import {
   applyReferralCodeFn,
   awardCoinsFn,
   requestSurveyVerificationFn,
+  reviewRedemptionFn,
 } from '../services/cloudFunctions';
 import { useIsAdmin } from '../hooks/useIsAdmin';
+import { getTodayString, getUserTimezone } from '../services/streakService';
 
 interface AppContextType {
   user: UserProfile;
@@ -41,7 +43,8 @@ interface AppContextType {
   requestRedemption: (payoutMethod: string, amountCurrency: number, coinsSpent: number, accountDetails: string) => Promise<{ success: boolean; message?: string }>;
   applyReferralCode: (code: string) => Promise<{ success: boolean; message: string }>;
   awardCoins: (amount: number, reason: string) => Promise<boolean>;
-  loginWithGoogle: () => Promise<void>;
+  loginWithGoogle: () => Promise<{ success: boolean; error?: string; errorCode?: string }>;
+  googleAuthLoading: boolean;
   logout: () => Promise<void>;
   soundEnabled: boolean;
   toggleSound: () => void;
@@ -67,11 +70,6 @@ interface AppContextType {
 }
 
 const AppContext = createContext<AppContextType | null>(null);
-
-function getTodayString(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
 
 // Display-only placeholder until the backend assigns the real code on sign-up.
 function placeholderReferralCode(): string {
@@ -204,6 +202,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [toast, setToast] = useState<{ text: string; coins?: number; type?: 'success' | 'info' | 'error' } | null>(null);
+  const [googleAuthLoading, setGoogleAuthLoading] = useState(false);
 
   const setOfferwallProvider = (provider: 'adgem' | 'bitlabs') => {
     setActiveOfferwallProviderState(provider);
@@ -246,15 +245,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const processRedemption = async (redemptionId: string, status: 'completed' | 'rejected'): Promise<boolean> => {
     try {
-      const docRef = doc(db, 'redemptions', redemptionId);
-      await updateDoc(docRef, {
-        status,
-        updatedAt: new Date().toISOString(),
-        processedBy: firebaseUser?.email || user?.email || 'admin@paisabharo.com',
-      });
+      const result = await reviewRedemptionFn({ redemptionId, status });
+      const data = result.data as { success: boolean; message: string; refunded?: boolean };
+
+      if (!data.success) {
+        showToast(data.message || 'Failed to update redemption', undefined, 'error');
+        return false;
+      }
+
       setAllRedemptions(prev => prev.map(r => r.id === redemptionId ? { ...r, status } : r));
       setRedemptions(prev => prev.map(r => r.id === redemptionId ? { ...r, status } : r));
-      showToast(`Redemption #${redemptionId.slice(-6)} set to ${status.toUpperCase()}`, undefined, 'success');
+      
+      const toastMessage = data.refunded
+        ? `Redemption #${redemptionId.slice(-6)} REJECTED: Coins refunded to user`
+        : `Redemption #${redemptionId.slice(-6)} set to ${status.toUpperCase()}`;
+      
+      showToast(toastMessage, undefined, 'success');
       return true;
     } catch (err: any) {
       console.error('Process redemption error:', err);
@@ -616,7 +622,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       // Get verification token from server (required for production security)
       const tokenResult = await requestSurveyVerificationFn({ surveyId });
-      const verificationToken = tokenResult.data?.success ? tokenResult.data.token : null;
+      const tokenData = tokenResult.data as { success?: boolean; token?: string } | null;
+      const verificationToken = tokenData?.success ? tokenData.token : null;
 
       const result = await completeSurveyFn({
         surveyId,
@@ -655,24 +662,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const claimDailyCheckIn = async (): Promise<boolean> => {
-    const today = getTodayString();
+    const tz = getUserTimezone();
+    const today = getTodayString(tz);
     if (user?.lastCheckInDate === today) return false;
 
     try {
-      const result = await claimDailyCheckInFn({});
-      const data = result.data as { success: boolean; bonus: number; newBalance: number; newLifetime: number; streak: number };
+      const result = await claimDailyCheckInFn({ timezone: tz });
+      const data = result.data as {
+        success: boolean;
+        bonus: number;
+        newBalance: number;
+        newLifetime: number;
+        streak: number;
+        lastCheckInDate?: string;
+        timezone?: string;
+      };
 
       if (!data.success) return false;
 
       const newStreak = data.streak;
       const bonus = data.bonus;
+      const confirmedDate = data.lastCheckInDate || today;
 
       setUser(prev => (prev ? {
         ...prev,
         coinsBalance: data.newBalance,
         lifetimeEarnings: data.newLifetime,
         streakDays: newStreak,
-        lastCheckInDate: today,
+        lastCheckInDate: confirmedDate,
+        timezone: data.timezone || tz,
         updatedAt: new Date().toISOString(),
       } : prev));
 
@@ -690,11 +708,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const claimScratchCard = async (): Promise<{ success: boolean; coins: number }> => {
-    const today = getTodayString();
+    const tz = getUserTimezone();
+    const today = getTodayString(tz);
 
     try {
-      const result = await claimScratchCardFn({});
-      const data = result.data as { success: boolean; coins: number; newBalance: number; newLifetime: number };
+      const result = await claimScratchCardFn({ timezone: tz });
+      const data = result.data as {
+        success: boolean;
+        coins: number;
+        newBalance: number;
+        newLifetime: number;
+        claimedDate?: string;
+        timezone?: string;
+      };
 
       if (!data.success) {
         showToast('Failed to claim scratch card', 0, 'error');
@@ -703,14 +729,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // Server determines the reward
       const awardedCoins = data.coins;
+      const dateUsed = data.claimedDate || today;
 
-      localStorage.setItem('paisabhar_last_scratch', today);
+      localStorage.setItem('paisabhar_last_scratch', dateUsed);
       setScratchCardAvailable(false);
 
       setUser(prev => (prev ? {
         ...prev,
         coinsBalance: data.newBalance,
         lifetimeEarnings: data.newLifetime,
+        timezone: data.timezone || tz,
         updatedAt: new Date().toISOString(),
       } : prev));
 
@@ -832,11 +860,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const loginWithGoogle = async () => {
+  const loginWithGoogle = async (): Promise<{ success: boolean; error?: string; errorCode?: string }> => {
+    setGoogleAuthLoading(true);
     try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (error) {
+      const res = await signInWithPopup(auth, googleProvider);
+      showToast(`Welcome, ${res.user.displayName || res.user.email || 'Friend'}!`, undefined, 'success');
+      return { success: true };
+    } catch (error: any) {
       console.error('Google Sign-In failed:', error);
+      const code = error?.code || '';
+      let userMsg = error?.message || 'Google Sign-In failed';
+
+      if (code === 'auth/popup-blocked') {
+        userMsg = 'Google Sign-In pop-up was blocked by your browser. Please allow pop-ups for this site or open the app in a new tab.';
+      } else if (code === 'auth/unauthorized-domain') {
+        userMsg = `Domain (${window.location.hostname}) is not authorized in Firebase Auth. Add it to Authorized Domains in Firebase Console > Authentication > Settings.`;
+      } else if (code === 'auth/operation-not-allowed') {
+        userMsg = 'Google Sign-In is disabled in your Firebase project. Please enable Google under Authentication > Sign-in method in Firebase Console.';
+      } else if (code === 'auth/popup-closed-by-user') {
+        userMsg = 'Sign-in cancelled: The Google popup window was closed.';
+      } else if (code === 'auth/cancelled-popup-request') {
+        userMsg = 'Another sign-in window is already open. Please complete or close it.';
+      } else if (code === 'auth/network-request-failed') {
+        userMsg = 'Network error during Google Sign-In. Please check your connection.';
+      }
+
+      showToast(userMsg, undefined, 'error');
+      return { success: false, error: userMsg, errorCode: code };
+    } finally {
+      setGoogleAuthLoading(false);
     }
   };
 
@@ -909,6 +961,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         applyReferralCode,
         awardCoins,
         loginWithGoogle,
+        googleAuthLoading,
         logout,
         soundEnabled,
         toggleSound,

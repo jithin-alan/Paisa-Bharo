@@ -41,6 +41,7 @@ service cloud.firestore {
              data.country is string && data.country.size() <= 8 &&
              data.currency is string && data.currency.size() <= 8 &&
              data.language is string && data.language.size() <= 8 &&
+             (!('timezone' in data) || (data.timezone is string && data.timezone.size() <= 64)) &&
              // CRITICAL SECURITY: Prevent users from setting admin fields
              !data.keys().hasAny(['isAdmin', 'role', 'isSuperadmin', 'permissions']) &&
              // CRITICAL SECURITY: Prevent client modification of server-managed fields
@@ -69,7 +70,7 @@ service cloud.firestore {
                        incoming().diff(existing()).affectedKeys().hasOnly([
                          'displayName', 'photoURL',
                          'country', 'currency',
-                         'language', 'referredBy', 'updatedAt'
+                         'language', 'referredBy', 'timezone', 'updatedAt'
                        ]) || isAdmin();
       allow delete: if isAdmin();
     }
@@ -139,7 +140,28 @@ service cloud.firestore {
       allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
       allow create: if false; // All redemption requests must go through the callable function
-      allow update, delete: if isAdmin();
+      allow update, delete: if false; // Decisions and refunds must go through reviewRedemption function
+    }
+
+    // User Transactions Audit Collection (Ledger of coin credits/debits)
+    match /user_transactions/{txId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow write: if false; // Strict audit ledger: only server-side Cloud Functions can write transactions
+    }
+
+    // Scratch Cards Claims Collection
+    match /scratch_cards/{cardId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow write: if false; // Only server-side Cloud Functions can record claims
+    }
+
+    // Referral Claims Collection (Durable unique claim lock per user)
+    match /referral_claims/{claimId} {
+      allow get: if isSignedIn() && (claimId == request.auth.uid || resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow write: if false; // Only server-side Cloud Functions can record claims
     }
 
     // System Settings Collection (Global app settings managed by admin)

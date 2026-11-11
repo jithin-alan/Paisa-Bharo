@@ -16,3 +16,4 @@ export const applyReferralCodeFn = httpsCallable(functions, 'applyReferralCode')
 export const awardCoinsFn = httpsCallable(functions, 'awardCoins');
 // NEW: Request survey verification token for secure survey completion flow
 export const requestSurveyVerificationFn = httpsCallable(functions, 'requestSurveyVerification');
+export const reviewRedemptionFn = httpsCallable<{ redemptionId: string; status: 'completed' | 'rejected' }, { success: boolean; message: string; refunded?: boolean }>(functions, 'reviewRedemption');

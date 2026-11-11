@@ -1,24 +1,21 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import { db, getUserRef } from "./helpers";
+import { db, getUserRef, resolveTimezone, getDateInTimezone, } from "./helpers";
 // Scratch card reward table — server decides the outcome, never the client.
 // Weighted distribution: small wins common, big wins rare.
 const SCRATCH_REWARDS = [10, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200, 300, 500];
 const SCRATCH_WEIGHTS = [18, 16, 14, 12, 10, 8, 6, 5, 4, 3, 2, 1, 1];
 /**
  * Deterministic server-side reward selection.
- * Seeded by userId + date so the result is stable per user per day
- * (a user cannot re-roll by retrying), yet unpredictable in advance.
+ * Seeded by userId + date in user timezone so the result is stable per user per day.
  */
 function generateScratchReward(userId, dateStr) {
-    // FNV-1a hash over the seed string
     let hash = 2166136261;
     const seed = `${userId}_${dateStr}`;
     for (let i = 0; i < seed.length; i++) {
         hash ^= seed.charCodeAt(i);
         hash = Math.imul(hash, 16777619);
     }
-    // Map hash onto the weighted reward table
     const totalWeight = SCRATCH_WEIGHTS.reduce((a, b) => a + b, 0);
     let roll = Math.abs(hash) % totalWeight;
     for (let i = 0; i < SCRATCH_REWARDS.length; i++) {
@@ -34,37 +31,41 @@ export const claimScratchCard = functions.https.onCall(async (request, response)
     if (!context) {
         throw new functions.https.HttpsError("unauthenticated", "Must be logged in");
     }
-    // SECURITY: The client must NOT decide the reward. The server generates it.
     const userId = context.uid;
-    const today = new Date().toISOString().split("T")[0];
-    const scratchKey = `scratch_${userId}_${today}`;
-    const scratchRef = db.collection("scratch_cards").doc(scratchKey);
-    // Server-side deterministic reward generation
-    const coins = generateScratchReward(userId, today);
     const userRef = getUserRef(userId);
     return await db.runTransaction(async (transaction) => {
-        // Check if already claimed today
-        const existing = await transaction.get(scratchRef);
-        if (existing.exists) {
-            throw new functions.https.HttpsError("already-exists", "Already claimed scratch card today");
-        }
         const userDoc = await transaction.get(userRef);
         if (!userDoc.exists) {
             throw new functions.https.HttpsError("not-found", "User not found");
         }
         const userData = userDoc.data();
+        const requestData = (request.data || {});
+        // Resolve user timezone
+        const userTimezone = resolveTimezone(requestData.timezone, userData.timezone, userData.country);
+        const today = getDateInTimezone(new Date(), userTimezone);
+        const scratchKey = `scratch_${userId}_${today}`;
+        const scratchRef = db.collection("scratch_cards").doc(scratchKey);
+        // Check if already claimed today in this timezone
+        const existing = await transaction.get(scratchRef);
+        if (existing.exists) {
+            throw new functions.https.HttpsError("already-exists", `Already claimed scratch card today (${today}) in timezone ${userTimezone}`);
+        }
+        const coins = generateScratchReward(userId, today);
         const newBalance = (userData.coinsBalance || 0) + coins;
         const newLifetime = (userData.lifetimeEarnings || 0) + coins;
         // Record scratch card claim
         transaction.set(scratchRef, {
             userId,
             coinsAwarded: coins,
+            date: today,
+            timezone: userTimezone,
             claimedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
         // Update user balance
         transaction.update(userRef, {
             coinsBalance: newBalance,
             lifetimeEarnings: newLifetime,
+            timezone: userTimezone,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
         // Create transaction record
@@ -76,7 +77,7 @@ export const claimScratchCard = functions.https.onCall(async (request, response)
             reason: "scratch_card",
             balanceBefore: userData.coinsBalance || 0,
             balanceAfter: newBalance,
-            metadata: {},
+            metadata: { date: today, timezone: userTimezone },
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
         return {
@@ -84,6 +85,8 @@ export const claimScratchCard = functions.https.onCall(async (request, response)
             coins,
             newBalance,
             newLifetime,
+            claimedDate: today,
+            timezone: userTimezone,
         };
     });
 });

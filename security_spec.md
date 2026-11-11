@@ -1,24 +1,31 @@
 # Security Specification: Paisa Bharo
 
 ## 1. Data Invariants
-1. Users can only read and write their own profile document (`/users/{userId}` where `userId == request.auth.uid`).
-2. Users cannot self-escalate or arbitrarily inflate coins outside valid validated action constraints.
-3. Every poll vote (`/poll_votes/{voteId}`) must have `incoming().userId == request.auth.uid`.
-4. Polls (`/polls/{pollId}`) and Offers (`/offers/{offerId}`) can be read publicly or by signed in users, but can only be modified by admins.
-5. User tasks (`/user_tasks/{taskId}`) must belong to the requesting user (`incoming().userId == request.auth.uid`).
-6. Redemptions (`/redemptions/{redemptionId}`) must be created by the authenticated owner (`incoming().userId == request.auth.uid`) with `status == 'pending'` and positive `coinsSpent`.
-7. Once created, redemptions cannot be modified by regular users to avoid double-spend or status forging.
+1. **User Profile Isolation**: Users can only read and write their own profile document (`/users/{userId}` where `userId == request.auth.uid`). Non-owners and unauthenticated users cannot read user profiles.
+2. **Privilege Escalation Prevention**: Users cannot self-escalate (`isAdmin`, `role`, `isSuperadmin`, `permissions` fields are strictly forbidden from incoming client payloads).
+3. **Wallet Field Tamper-Proofing**: Clients cannot write or update wallet fields (`coinsBalance`, `lifetimeEarnings`, `streakDays`, `lastCheckInDate`). All coin allocations, deductions, and streak computations are executed strictly server-side inside Firestore transactions.
+4. **Ledger Audit Immutability**: All client writes to `/user_transactions/{txId}` are denied (`allow write: if false;`). Users can only read transactions where `resource.data.userId == request.auth.uid`. Admins can read all transactions.
+5. **Redemption Lockdown**: All client writes (`create`, `update`, `delete`) to `/redemptions/{redemptionId}` are denied (`allow write: if false;`). Redemptions are created exclusively through the callable `requestRedemption` Cloud Function with server-side atomic balance verification, and reviewed exclusively through `reviewRedemption`.
+6. **Trusted Rejection Refund Process**: When an admin rejects a redemption via `reviewRedemption`, the spent coins are atomically refunded back to the user's `coinsBalance`, an audit credit is recorded in `user_transactions` with `reason: "redemption_refund"`, and `refunded: true` is locked on the redemption document.
+7. **Referral Uniqueness**: Referral codes cannot be applied more than once per user. Uniqueness is enforced atomically using dedicated durable lock documents in `/referral_claims/{userId}`. Client direct writes to `/referral_claims` are completely blocked (`allow write: if false;`).
+8. **Rate Limiting**: Sliding-window rate limiters defend the Express API against brute force and replay attacks: 120 req/min for general `/api/*`, 30 req/min for `/api/callbacks/*` and `/api/postbacks/*`, and 25 req/min for `/api/deals/click`.
 
 ## 2. The "Dirty Dozen" Payloads (Denial Expected)
-1. Ghost field update on user document (e.g. `{ "isAdmin": true }`).
-2. Forged userId on user creation (`{ "uid": "other_user_id" }`).
-3. Reading another user's private profile document.
-4. Non-admin modifying poll options or reward coins.
-5. User submitting a poll vote on behalf of another user (`userId: "victim_id"`).
-6. User submitting a redemption with negative `coinsSpent` (e.g. `{ "coinsSpent": -1000 }`).
-7. User setting redemption status directly to `"completed"` without admin/server approval.
-8. Injection of oversized junk payload (>128 chars in IDs or >500 chars in titles).
-9. Updating an immutable `createdAt` timestamp.
-10. Unauthenticated write to `/poll_votes/{voteId}`.
-11. Unauthenticated write to `/redemptions/{redemptionId}`.
-12. Attempting to delete public polls.
+1. **Ghost Field Escalation**: Client update with `{ "isAdmin": true }` or `{ "role": "admin" }` on `/users/{userId}` -> *DENIED*.
+2. **Direct Wallet Balance Manipulation**: Client creating or updating `/users/{userId}` with `{ "coinsBalance": 999999 }` -> *DENIED*.
+3. **Forged Profile Ownership**: Client setting `{ "uid": "other_user_id" }` in user creation -> *DENIED*.
+4. **Cross-Tenant PII Read**: Authenticated user attempting to read another user's document at `/users/{otherId}` -> *DENIED*.
+5. **Unauthorized Ledger Injection**: Direct client write to `/user_transactions/{txId}` -> *DENIED*.
+6. **Direct Redemption Document Creation**: Direct client create payload to `/redemptions/{redemptionId}` -> *DENIED*.
+7. **Redemption State Forging**: Client updating pending redemption to `{ "status": "completed" }` -> *DENIED*.
+8. **Replay Referral Claim**: User attempting to claim referral reward multiple times or forge claim document in `/referral_claims` -> *DENIED*.
+9. **Direct Scratch Card Claim Forging**: Direct client write to `/scratch_cards/{cardId}` -> *DENIED*.
+10. **Public Content Vandalism**: Non-admin attempting to delete or edit public polls in `/polls/{pollId}` -> *DENIED*.
+11. **Spoofed Poll Vote**: User submitting vote with `userId` of another user -> *DENIED*.
+12. **System Settings Modification**: Non-admin attempting to modify `/system_settings/global_config` -> *DENIED*.
+
+## 3. Automated Test Verification
+Automated test suites in `tests/` verify both rules and functions:
+- `tests/firestore.rules.test.ts`: Asserts default-deny, write locks on transactions, redemptions, scratch cards, referral claims, and profile isolation.
+- `tests/cloudFunctions.test.ts`: Asserts daily check-in consecutive streak rules, timezone normalization, poll voting bounds, redemption deduction, rejection refunds, admin coin adjustments, and referral uniqueness.
+- `tests/rateLimiter.test.ts`: Asserts memory rate limiter sliding window, 429 status code handling, headers, and reset timing.

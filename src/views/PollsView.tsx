@@ -5,6 +5,7 @@ import { getTranslation } from '../services/i18n';
 import { formatCoinsValue } from '../services/currencies';
 import { ScratchCardModal } from '../components/ScratchCardModal';
 import { PollPeCoin } from '../components/Illustrations';
+import { calculateStreakStatus, DAILY_REWARDS_MAP } from '../services/streakService';
 
 export const PollsView: React.FC = () => {
   const {
@@ -19,12 +20,20 @@ export const PollsView: React.FC = () => {
     scratchCardAvailable,
   } = useApp();
 
-  // Defensive check: user should always exist but handle null gracefully
-  const streakDays = user?.streakDays ?? 0;
-
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [showScratchModal, setShowScratchModal] = useState(false);
   const [votingPollId, setVotingPollId] = useState<string | null>(null);
+
+  // Timezone-safe streak calculation
+  const streakStatus = calculateStreakStatus(user?.lastCheckInDate, user?.streakDays, user?.timezone);
+  const {
+    effectiveStreak,
+    isCheckedInToday,
+    isStreakBroken,
+    currentCycleDay,
+    nextRewardDay,
+    nextRewardBonus,
+  } = streakStatus;
 
   const categories = ['All', 'Tech', 'Finance', 'Lifestyle', 'Entertainment', 'Shopping'];
 
@@ -38,8 +47,6 @@ export const PollsView: React.FC = () => {
     await votePoll(pollId, optionIdx);
     setVotingPollId(null);
   };
-
-  const isCheckedInToday = user?.lastCheckInDate === new Date().toISOString().slice(0, 10);
 
   return (
     <div className="space-y-6 pb-12">
@@ -55,14 +62,36 @@ export const PollsView: React.FC = () => {
               <div>
                 <div className="flex items-center gap-1.5">
                   <h3 className="font-black text-base text-gray-900">
-                    {streakDays} Day Streak!
+                    {isCheckedInToday || (!isStreakBroken && effectiveStreak > 0)
+                      ? `${effectiveStreak} Day Streak!`
+                      : isStreakBroken
+                      ? 'Streak Expired'
+                      : '0 Day Streak'}
                   </h3>
-                  <span className="text-[11px] bg-[#f0ebfc] text-[#7848f4] px-2.5 py-0.5 rounded-full font-bold">
-                    🔥 Active
+                  <span
+                    className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold ${
+                      isCheckedInToday
+                        ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                        : isStreakBroken
+                        ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                        : 'bg-[#f0ebfc] text-[#7848f4]'
+                    }`}
+                  >
+                    {isCheckedInToday
+                      ? '✓ Claimed Today'
+                      : isStreakBroken
+                      ? '⚠️ Missed Yesterday'
+                      : '🔥 Active'}
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Answer 1 poll daily to unlock bonus coin multipliers.
+                  {isCheckedInToday
+                    ? `Come back tomorrow to continue your streak for Day ${((effectiveStreak) % 7) + 1}!`
+                    : isStreakBroken
+                    ? 'You missed yesterday! Check in today to start a new 7-day streak (+20 coins).'
+                    : effectiveStreak > 0
+                    ? `Claim today to continue your streak and earn +${nextRewardBonus} coins!`
+                    : 'Check in daily to unlock bonus coin multipliers.'}
                 </p>
               </div>
             </div>
@@ -77,28 +106,38 @@ export const PollsView: React.FC = () => {
               }`}
             >
               <Gift className="w-3.5 h-3.5" />
-              <span>{isCheckedInToday ? getTranslation(selectedLanguage, 'claimed') : getTranslation(selectedLanguage, 'claimBonus')}</span>
+              <span>
+                {isCheckedInToday
+                  ? getTranslation(selectedLanguage, 'claimed')
+                  : isStreakBroken
+                  ? `Restart (+${nextRewardBonus})`
+                  : `${getTranslation(selectedLanguage, 'claimBonus')} (+${nextRewardBonus})`}
+              </span>
             </button>
           </div>
 
           {/* 7-Day Dots in PollPe Palette */}
           <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between gap-1 text-center">
             {[1, 2, 3, 4, 5, 6, 7].map((day) => {
-              const completed = day <= streakDays;
-              const isToday = day === streakDays;
+              const isCompleted = isCheckedInToday
+                ? day <= currentCycleDay
+                : !isStreakBroken && effectiveStreak > 0 && day <= currentCycleDay;
+              const isTargetToday = !isCheckedInToday && day === nextRewardDay;
+              const rewardAmount = DAILY_REWARDS_MAP[day];
+
               return (
                 <div key={day} className="flex-1 flex flex-col items-center">
                   <span className="text-[10px] text-gray-400 mb-1 font-semibold">D{day}</span>
                   <div
                     className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-xs font-black transition-all ${
-                      completed
+                      isCompleted
                         ? 'bg-[#7848f4] text-white shadow-sm shadow-purple-500/20'
-                        : isToday
-                        ? 'bg-[#f0ebfc] border-2 border-[#7848f4] text-[#7848f4]'
+                        : isTargetToday
+                        ? 'bg-[#f0ebfc] border-2 border-[#7848f4] text-[#7848f4] shadow-sm animate-pulse'
                         : 'bg-gray-50 text-gray-400 border border-gray-200'
                     }`}
                   >
-                    {completed ? '✓' : `+${day * 20}`}
+                    {isCompleted ? '✓' : `+${rewardAmount}`}
                   </div>
                 </div>
               );
@@ -222,9 +261,9 @@ export const PollsView: React.FC = () => {
 
           {/* Categories in PollPe purple */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-            {categories.map((cat) => (
+            {categories.map((cat, idx) => (
               <button
-                key={cat}
+                key={`pollcat-${idx}-${cat}`}
                 onClick={() => setSelectedCategory(cat)}
                 className={`px-3.5 py-1.5 rounded-full text-xs font-bold shrink-0 transition cursor-pointer ${
                   selectedCategory === cat
@@ -279,7 +318,7 @@ export const PollsView: React.FC = () => {
 
                     return (
                       <button
-                        key={idx}
+                        key={`pollopt-${poll.id}-${idx}`}
                         disabled={hasVoted || votingPollId === poll.id}
                         onClick={() => handleVote(poll.id, idx)}
                         className={`relative w-full text-left p-3.5 sm:p-4 rounded-2xl border transition-all overflow-hidden flex items-center justify-between select-none ${

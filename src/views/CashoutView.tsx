@@ -299,7 +299,7 @@ export const CashoutView: React.FC = () => {
 
                   return (
                     <button
-                      key={idx}
+                      key={`denom-${denom.coins}-${idx}`}
                       type="button"
                       onClick={() => setSelectedDenom(denom)}
                       className={`p-3 rounded-2xl border text-left transition cursor-pointer ${

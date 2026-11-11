@@ -4,6 +4,9 @@ export declare const claimDailyCheckIn: functions.https.CallableFunction<any, Pr
     bonus: number;
     newBalance: any;
     newLifetime: any;
-    streak: any;
+    streak: number;
+    cycleDay: number;
+    lastCheckInDate: string;
+    timezone: string;
 }>, unknown>;
 //# sourceMappingURL=dailyCheckin.d.ts.map

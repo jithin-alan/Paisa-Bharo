@@ -12,6 +12,7 @@ export interface UserProfile {
   country: string;
   currency: string;
   language: string;
+  timezone?: string;
   createdAt?: string;
   updatedAt?: string;
   // CRITICAL: isAdmin is a runtime-only field determined by Firebase Auth custom claims.

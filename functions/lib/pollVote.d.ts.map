@@ -1,1 +1,1 @@
-{"version":3,"file":"pollVote.d.ts","sourceRoot":"","sources":["../src/pollVote.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,SAAS,MAAM,oBAAoB,CAAC;AAgBhD,eAAO,MAAM,QAAQ;;;;;YA2GnB,CAAC"}
+{"version":3,"file":"pollVote.d.ts","sourceRoot":"","sources":["../src/pollVote.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,SAAS,MAAM,oBAAoB,CAAC;AAShD,eAAO,MAAM,QAAQ;;;;;YAqHnB,CAAC"}

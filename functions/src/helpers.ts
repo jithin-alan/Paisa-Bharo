@@ -18,3 +18,83 @@ export function getUserRef(userId: string) {
 export function isAdminUser(context: { token: any } | null | undefined): boolean {
   return context?.token?.admin === true;
 }
+
+/**
+ * Checks if a string is a valid IANA timezone name.
+ */
+export function isValidTimezone(tz: any): boolean {
+  if (!tz || typeof tz !== "string" || tz.length > 64) return false;
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Mapping of country codes to representative primary timezones
+ */
+const COUNTRY_TIMEZONE_MAP: Record<string, string> = {
+  IN: "Asia/Kolkata",
+  US: "America/New_York",
+  GB: "Europe/London",
+  UK: "Europe/London",
+  CA: "America/Toronto",
+  AU: "Australia/Sydney",
+  DE: "Europe/Berlin",
+  FR: "Europe/Paris",
+  JP: "Asia/Tokyo",
+  BR: "America/Sao_Paulo",
+  AE: "Asia/Dubai",
+  SG: "Asia/Singapore",
+  ZA: "Africa/Johannesburg",
+  MX: "America/Mexico_City",
+};
+
+/**
+ * Resolves the appropriate timezone for a user request
+ */
+export function resolveTimezone(requestedTz?: any, userProfileTz?: any, userCountry?: any): string {
+  if (isValidTimezone(requestedTz)) {
+    return requestedTz;
+  }
+  if (isValidTimezone(userProfileTz)) {
+    return userProfileTz;
+  }
+  if (userCountry && typeof userCountry === "string") {
+    const code = userCountry.trim().toUpperCase();
+    if (COUNTRY_TIMEZONE_MAP[code]) {
+      return COUNTRY_TIMEZONE_MAP[code];
+    }
+  }
+  return "UTC";
+}
+
+/**
+ * Formats a Date object into YYYY-MM-DD in the specified timezone
+ */
+export function getDateInTimezone(date: Date, timeZone: string): string {
+  try {
+    const formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    return formatter.format(date);
+  } catch {
+    return date.toISOString().split("T")[0];
+  }
+}
+
+/**
+ * Calculates calendar day difference (dateStr2 - dateStr1) in integer days.
+ * E.g., ('2026-11-10', '2026-11-11') => 1 day
+ */
+export function getDaysDifference(dateStr1: string, dateStr2: string): number {
+  const d1 = new Date(dateStr1 + "T00:00:00Z");
+  const d2 = new Date(dateStr2 + "T00:00:00Z");
+  const diffTime = d2.getTime() - d1.getTime();
+  return Math.round(diffTime / (1000 * 60 * 60 * 24));
+}

@@ -167,7 +167,7 @@ export const SurveyModal: React.FC = () => {
 
                     return (
                       <button
-                        key={idx}
+                        key={`opt-${question.id}-${idx}`}
                         onClick={() => handleSelectOption(opt)}
                         className={`w-full p-3.5 rounded-2xl border text-left text-sm transition-all flex items-center justify-between cursor-pointer ${
                           isSelected

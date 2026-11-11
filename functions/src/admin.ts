@@ -32,8 +32,18 @@ export const awardCoins = functions.https.onCall(async (request, response): Prom
     throw new functions.https.HttpsError("invalid-argument", "Missing required fields");
   }
 
+  // Validate integer amounts
+  if (!Number.isInteger(amount)) {
+    throw new functions.https.HttpsError("invalid-argument", "Amount must be a valid integer");
+  }
+
+  // Validate reason length
+  if (typeof reason !== "string" || reason.trim().length === 0 || reason.length > 256) {
+    throw new functions.https.HttpsError("invalid-argument", "Reason must be between 1 and 256 characters");
+  }
+
   if (Math.abs(amount) > 10000) {
-    throw new functions.https.HttpsError("invalid-argument", "Amount exceeds maximum");
+    throw new functions.https.HttpsError("invalid-argument", "Amount exceeds maximum limit of 10,000");
   }
 
   const userRef = getUserRef(userId);
@@ -46,6 +56,8 @@ export const awardCoins = functions.https.onCall(async (request, response): Prom
 
     const userData = userDoc.data()!;
     const currentBalance = userData.coinsBalance || 0;
+    
+    // Negative balance handling (cannot drop below 0)
     const newBalance = Math.max(0, currentBalance + amount);
     const newLifetime = amount > 0 ? (userData.lifetimeEarnings || 0) + amount : (userData.lifetimeEarnings || 0);
 
@@ -60,7 +72,7 @@ export const awardCoins = functions.https.onCall(async (request, response): Prom
       userId,
       type: amount >= 0 ? "credit" : "debit",
       amount: Math.abs(amount),
-      reason,
+      reason: reason.trim(),
       balanceBefore: currentBalance,
       balanceAfter: newBalance,
       metadata: { adminId: context.uid },
