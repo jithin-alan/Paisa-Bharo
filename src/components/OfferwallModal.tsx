@@ -179,9 +179,9 @@ export const OfferwallModal: React.FC<Props> = ({ isOpen, onClose, defaultProvid
             </div>
           ) : (
             <div className="space-y-3">
-              {offers.map((offer) => (
+              {offers.map((offer, idx) => (
                 <div
-                  key={offer.id}
+                  key={`offerwall-${offer.id}-${idx}`}
                   className="bg-white rounded-2xl border border-[#e5dcfa] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-[0_2px_10px_rgba(120,72,244,0.04)] hover:border-[#7848f4] transition"
                 >
                   <div className="flex items-start gap-3.5 min-w-0">

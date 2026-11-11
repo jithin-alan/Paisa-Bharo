@@ -458,9 +458,9 @@ const AppContent: React.FC = () => {
 
               {showLangMenu && (
                 <div className="absolute right-0 mt-2 w-44 rounded-2xl bg-white border border-[#e5dcfa] shadow-xl py-2 z-50 text-xs">
-                  {SUPPORTED_LANGUAGES.map((lang) => (
+                  {SUPPORTED_LANGUAGES.map((lang, idx) => (
                     <button
-                      key={lang.code}
+                      key={`app-lang-${lang.code}-${idx}`}
                       onClick={() => {
                         setLanguage(lang.code);
                         setShowLangMenu(false);
@@ -662,13 +662,13 @@ const AppContent: React.FC = () => {
             { id: 'cashout', label: getTranslation(selectedLanguage, 'rewardsTab'), icon: Gift },
             { id: 'refer', label: getTranslation(selectedLanguage, 'referTab'), icon: Users },
             { id: 'settings', label: getTranslation(selectedLanguage, 'profileTab'), icon: Settings },
-          ].map((item) => {
+          ].map((item, idx) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
 
             return (
               <button
-                key={item.id}
+                key={`app-nav-${item.id}-${idx}`}
                 onClick={() => setActiveTab(item.id as TabType)}
                 className={`relative flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-all cursor-pointer ${
                   isActive

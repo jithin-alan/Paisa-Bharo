@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Moon, Globe, Mail, Smartphone } from 'lucide-react';
+import { LegalComplianceModal, LegalTabType } from '../components/LegalComplianceModal';
 
 interface Props {
   onGoogleLogin: () => void;
@@ -68,6 +69,14 @@ export const LandingPage: React.FC<Props> = ({
   googleLoading = false,
   googleError = '',
 }) => {
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
+  const [selectedLegalTab, setSelectedLegalTab] = useState<LegalTabType>('privacy');
+
+  const openLegalModal = (tab: LegalTabType) => {
+    setSelectedLegalTab(tab);
+    setLegalModalOpen(true);
+  };
+
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -620,13 +629,49 @@ export const LandingPage: React.FC<Props> = ({
         <p className="text-gray-600">Trusted by thousands of users worldwide.</p>
       </section>
 
-      <section id="faq" className="max-w-4xl mx-auto px-6 py-20">
-        <h2 className="text-3xl font-extrabold mb-4">FAQ</h2>
-        <p className="text-gray-600">Answers to common questions.</p>
-      </section>
+      {/* Footer Legal & Support Links */}
+      <footer className="border-t border-gray-200 bg-gray-50 py-12 px-6 text-gray-600 text-xs">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div>
+            <p className="font-extrabold text-sm text-gray-900">Paisa Bharo • PollPe Design Architecture</p>
+            <p className="text-[#7848f4] font-semibold mt-0.5">
+              Support Email: <a href="mailto:stickadmob@gmail.com" className="hover:underline font-extrabold">stickadmob@gmail.com</a>
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-4 font-bold text-gray-700">
+            <button onClick={() => openLegalModal('privacy')} className="hover:text-[#7848f4] transition cursor-pointer">
+              Privacy Policy
+            </button>
+            <span>•</span>
+            <button onClick={() => openLegalModal('terms')} className="hover:text-[#7848f4] transition cursor-pointer">
+              Terms & Conditions
+            </button>
+            <span>•</span>
+            <button onClick={() => openLegalModal('rewards')} className="hover:text-[#7848f4] transition cursor-pointer">
+              Reward Policy (1000 Coins = $1.00)
+            </button>
+            <span>•</span>
+            <button onClick={() => openLegalModal('support')} className="hover:text-[#7848f4] transition cursor-pointer">
+              Customer Support
+            </button>
+            <span>•</span>
+            <button onClick={() => openLegalModal('deletion')} className="hover:text-[#7848f4] text-red-600 transition cursor-pointer">
+              Data & Account Deletion
+            </button>
+          </div>
+        </div>
+      </footer>
 
       {/* Firebase reCAPTCHA container: kept mounted so the verifier isn't torn down */}
       <div id="recaptcha-container" style={{ visibility: 'hidden' }} />
+
+      {/* Legal Modal Render */}
+      <LegalComplianceModal
+        isOpen={legalModalOpen}
+        onClose={() => setLegalModalOpen(false)}
+        initialTab={selectedLegalTab}
+      />
     </div>
   );
 };

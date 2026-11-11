@@ -1,10 +1,11 @@
-import React from 'react';
-import { LogOut, Globe, DollarSign, Volume2, VolumeX, Shield, Smartphone, CheckCircle2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { LogOut, Globe, DollarSign, Volume2, VolumeX, Shield, Smartphone, CheckCircle2, ShieldCheck, FileText, Coins, Mail, Trash2, Users, Eye, HelpCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getTranslation, SUPPORTED_LANGUAGES } from '../services/i18n';
 import { SUPPORTED_CURRENCIES, formatCoinsValue } from '../services/currencies';
 import { PWAInstallButton } from '../components/PWAInstallButton';
 import { PollPeCoin } from '../components/Illustrations';
+import { LegalComplianceModal, LegalTabType } from '../components/LegalComplianceModal';
 
 export const SettingsView: React.FC = () => {
   const {
@@ -20,6 +21,14 @@ export const SettingsView: React.FC = () => {
     soundEnabled,
     toggleSound,
   } = useApp();
+
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
+  const [selectedLegalTab, setSelectedLegalTab] = useState<LegalTabType>('privacy');
+
+  const openLegalModal = (tab: LegalTabType) => {
+    setSelectedLegalTab(tab);
+    setLegalModalOpen(true);
+  };
 
   // Defensive check: user should always exist but handle null gracefully
   const coinsBalance = user?.coinsBalance ?? 0;
@@ -59,11 +68,11 @@ export const SettingsView: React.FC = () => {
         </div>
 
         {/* Auth Action Button */}
-        <div className="pt-3 border-t border-gray-100">
+        <div className="pt-3 border-t border-gray-100 flex flex-col sm:flex-row items-center gap-2">
           {firebaseUser ? (
             <button
               onClick={logout}
-              className="w-full py-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-red-500 font-bold text-xs flex items-center justify-center gap-2 border border-gray-200 transition cursor-pointer"
+              className="flex-1 py-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-red-500 font-bold text-xs flex items-center justify-center gap-2 border border-gray-200 transition cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
               <span>{getTranslation(selectedLanguage, 'signOut')}</span>
@@ -72,7 +81,7 @@ export const SettingsView: React.FC = () => {
             <button
               onClick={loginWithGoogle}
               disabled={googleAuthLoading}
-              className="w-full py-3 rounded-xl bg-[#7848f4] hover:bg-[#6837e3] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(120,72,244,0.3)] transition cursor-pointer active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="flex-1 py-3 rounded-xl bg-[#7848f4] hover:bg-[#6837e3] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(120,72,244,0.3)] transition cursor-pointer active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {googleAuthLoading ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -84,6 +93,14 @@ export const SettingsView: React.FC = () => {
               <span>{googleAuthLoading ? 'Opening Google...' : getTranslation(selectedLanguage, 'signInWithGoogle')}</span>
             </button>
           )}
+
+          <button
+            onClick={() => openLegalModal('deletion')}
+            className="py-2.5 px-4 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs flex items-center justify-center gap-1.5 border border-red-200 transition cursor-pointer shrink-0"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Delete Data</span>
+          </button>
         </div>
       </div>
 
@@ -97,9 +114,9 @@ export const SettingsView: React.FC = () => {
           Switch the app interface into your preferred native language:
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          {SUPPORTED_LANGUAGES.map((lang) => (
+          {SUPPORTED_LANGUAGES.map((lang, idx) => (
             <button
-              key={lang.code}
+              key={`settings-lang-${lang.code}-${idx}`}
               onClick={() => setLanguage(lang.code)}
               className={`p-3.5 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer ${
                 selectedLanguage === lang.code
@@ -127,12 +144,12 @@ export const SettingsView: React.FC = () => {
           Select currency to display exact conversion rates and region-aware withdrawal options:
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          {Object.keys(SUPPORTED_CURRENCIES).map((code) => {
+          {Object.keys(SUPPORTED_CURRENCIES).map((code, idx) => {
             const curr = SUPPORTED_CURRENCIES[code];
             const isSelected = selectedCurrency === code;
             return (
               <button
-                key={code}
+                key={`settings-curr-${code}-${idx}`}
                 onClick={() => setCurrency(code)}
                 className={`p-3.5 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer ${
                   isSelected
@@ -148,6 +165,91 @@ export const SettingsView: React.FC = () => {
               </button>
             );
           })}
+        </div>
+      </div>
+
+      {/* Legal, Policies & Customer Support */}
+      <div className="rounded-[28px] bg-white border border-[#e5dcfa] p-5 sm:p-6 shadow-[0_4px_20px_rgba(120,72,244,0.05)] space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-[#7848f4]" />
+            <h4 className="font-extrabold text-sm text-gray-900">Legal, Policies & Support Center</h4>
+          </div>
+          <span className="text-[10px] bg-[#f0ebfc] text-[#7848f4] font-extrabold px-2.5 py-0.5 rounded-full">
+            Verified Compliance
+          </span>
+        </div>
+
+        <p className="text-xs text-gray-500">
+          Inspect our transparent privacy practices, reward rules, support contact (<strong className="text-gray-800">stickadmob@gmail.com</strong>), and user rights.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <button
+            onClick={() => openLegalModal('privacy')}
+            className="p-3.5 rounded-2xl border border-gray-200 hover:border-[#7848f4] hover:bg-[#faf7ff] text-left transition flex items-center gap-3 cursor-pointer group"
+          >
+            <ShieldCheck className="w-4 h-4 text-[#7848f4] shrink-0" />
+            <div className="min-w-0">
+              <span className="text-xs font-black text-gray-900 block group-hover:text-[#7848f4]">Privacy Policy & Data Rights</span>
+              <span className="text-[10px] text-gray-500 block truncate">Data collection, Cint/AdGem/BitLabs disclosures</span>
+            </div>
+          </button>
+
+          <button
+            onClick={() => openLegalModal('terms')}
+            className="p-3.5 rounded-2xl border border-gray-200 hover:border-[#7848f4] hover:bg-[#faf7ff] text-left transition flex items-center gap-3 cursor-pointer group"
+          >
+            <FileText className="w-4 h-4 text-[#7848f4] shrink-0" />
+            <div className="min-w-0">
+              <span className="text-xs font-black text-gray-900 block group-hover:text-[#7848f4]">Terms & Conditions</span>
+              <span className="text-[10px] text-gray-500 block truncate">Usage rules & zero-tolerance fraud policy</span>
+            </div>
+          </button>
+
+          <button
+            onClick={() => openLegalModal('rewards')}
+            className="p-3.5 rounded-2xl border border-gray-200 hover:border-[#7848f4] hover:bg-[#faf7ff] text-left transition flex items-center gap-3 cursor-pointer group"
+          >
+            <Coins className="w-4 h-4 text-[#7848f4] shrink-0" />
+            <div className="min-w-0">
+              <span className="text-xs font-black text-gray-900 block group-hover:text-[#7848f4]">Reward & Conversion Rules</span>
+              <span className="text-[10px] text-gray-500 block truncate">1,000 Coins = $1.00 USD / ₹80 INR rate breakdown</span>
+            </div>
+          </button>
+
+          <button
+            onClick={() => openLegalModal('support')}
+            className="p-3.5 rounded-2xl border border-gray-200 hover:border-[#7848f4] hover:bg-[#faf7ff] text-left transition flex items-center gap-3 cursor-pointer group"
+          >
+            <Mail className="w-4 h-4 text-[#7848f4] shrink-0" />
+            <div className="min-w-0">
+              <span className="text-xs font-black text-gray-900 block group-hover:text-[#7848f4]">Contact Support</span>
+              <span className="text-[10px] text-gray-500 block truncate">stickadmob@gmail.com • 24hr response SLA</span>
+            </div>
+          </button>
+
+          <button
+            onClick={() => openLegalModal('deletion')}
+            className="p-3.5 rounded-2xl border border-gray-200 hover:border-red-400 hover:bg-red-50/50 text-left transition flex items-center gap-3 cursor-pointer group"
+          >
+            <Trash2 className="w-4 h-4 text-red-500 shrink-0" />
+            <div className="min-w-0">
+              <span className="text-xs font-black text-gray-900 block group-hover:text-red-600">Account Deletion Procedure</span>
+              <span className="text-[10px] text-gray-500 block truncate">Purge profile & coin history permanently</span>
+            </div>
+          </button>
+
+          <button
+            onClick={() => openLegalModal('eligibility')}
+            className="p-3.5 rounded-2xl border border-gray-200 hover:border-[#7848f4] hover:bg-[#faf7ff] text-left transition flex items-center gap-3 cursor-pointer group"
+          >
+            <Users className="w-4 h-4 text-[#7848f4] shrink-0" />
+            <div className="min-w-0">
+              <span className="text-xs font-black text-gray-900 block group-hover:text-[#7848f4]">Age & Geo Eligibility</span>
+              <span className="text-[10px] text-gray-500 block truncate">18+ requirement & VPN restriction notice</span>
+            </div>
+          </button>
         </div>
       </div>
 
@@ -195,7 +297,18 @@ export const SettingsView: React.FC = () => {
           <span>Protected with Firebase Zero-Trust Security</span>
           <Shield className="w-3.5 h-3.5 text-[#7848f4] inline" />
         </p>
+        <p className="text-[11px] pt-1">
+          Support: <a href="mailto:stickadmob@gmail.com" className="text-[#7848f4] font-bold hover:underline">stickadmob@gmail.com</a>
+        </p>
       </div>
+
+      {/* Legal Modal Render */}
+      <LegalComplianceModal
+        isOpen={legalModalOpen}
+        onClose={() => setLegalModalOpen(false)}
+        initialTab={selectedLegalTab}
+      />
     </div>
   );
 };
+

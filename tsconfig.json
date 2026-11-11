@@ -24,5 +24,6 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "exclude": ["dist", "functions"]
+  "include": ["src/**/*", "tests/**/*", "server.ts"],
+  "exclude": ["dist", "functions", "functions/**/*"]
 }
