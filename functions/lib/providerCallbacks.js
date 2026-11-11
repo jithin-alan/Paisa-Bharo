@@ -304,6 +304,17 @@ async function executeCallback(input) {
                 metadata: { provider, providerTransactionId: transactionId, ...metadata },
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
             });
+            // Mark survey completion as verified if it's a survey completion
+            if (provider === 'cint' && metadata.surveyId) {
+                const tokenRef = db.collection("survey_tokens").doc(`sv_${metadata.surveyId}_${userId}`);
+                const tokenDoc = await transaction.get(tokenRef);
+                if (tokenDoc.exists) {
+                    transaction.update(tokenRef, {
+                        status: 'verified',
+                        verifiedAt: admin.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+            }
             return {
                 success: true,
                 status: "credited",

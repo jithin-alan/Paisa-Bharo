@@ -40,12 +40,15 @@ export const processPendingReferralRewards = functions.scheduler
             const rewardData = rewardDoc.data();
             const rewardRef = rewardDoc.ref;
             try {
-                // Verify the user still exists and hasn't already received the reward
-                const userRef = rewardData.userId;
-                const userDoc = await transaction.get(getUserRef(userRef));
+                // Idempotency check: Ensure reward isn't already completed
+                if (rewardData.status === 'completed') {
+                    continue;
+                }
+                const targetUserId = rewardData.userId;
+                const targetUserRef = getUserRef(targetUserId);
+                const userDoc = await transaction.get(targetUserRef);
                 if (!userDoc.exists) {
-                    console.warn(`User ${userRef} not found for reward ${rewardData.rewardId}`);
-                    // Mark as revoked since user doesn't exist
+                    console.warn(`User ${targetUserId} not found for reward ${rewardDoc.id}`);
                     transaction.update(rewardRef, {
                         status: "revoked",
                         revokedAt: now,
@@ -55,26 +58,13 @@ export const processPendingReferralRewards = functions.scheduler
                     continue;
                 }
                 const userData = userDoc.data();
-                // Check if user already has this referral recorded (prevent double reward)
-                const alreadyReferredBy = userData.referredBy;
-                const referralCode = rewardData.referralCode;
-                if (alreadyReferredBy && alreadyReferredBy !== referralCode) {
-                    console.warn(`User ${userRef} already has different referral: ${alreadyReferredBy}`);
-                    transaction.update(rewardRef, {
-                        status: "revoked",
-                        revokedAt: now,
-                        revokeReason: "User has different referral",
-                    });
-                    errorCount++;
-                    continue;
-                }
-                // Award the coins to the user
+                // Award the coins to the target user of the reward record
                 const currentBalance = userData.coinsBalance || 0;
                 const currentLifetime = userData.lifetimeEarnings || 0;
                 const newBalance = currentBalance + rewardData.amount;
                 const newLifetime = currentLifetime + rewardData.amount;
                 // Update user balance
-                transaction.update(getUserRef(userRef), {
+                transaction.update(targetUserRef, {
                     coinsBalance: newBalance,
                     lifetimeEarnings: newLifetime,
                     updatedAt: now,
@@ -87,56 +77,30 @@ export const processPendingReferralRewards = functions.scheduler
                 // Create a transaction record for the reward
                 const txRef = db.collection("user_transactions").doc();
                 transaction.set(txRef, {
-                    userId: rewardData.userId,
+                    userId: targetUserId,
                     type: "credit",
                     amount: rewardData.amount,
-                    reason: "referral_bonus_qualified",
+                    reason: rewardData.type === 'bonus' ? "referral_bonus_qualified" : "referral_reward_qualified",
                     balanceBefore: currentBalance,
                     balanceAfter: newBalance,
                     metadata: {
-                        rewardId: rewardData.rewardId,
+                        rewardId: rewardDoc.id,
                         referralCode: rewardData.referralCode,
                         referrerId: rewardData.referrerId,
                         processingType: "pending_qualification",
                     },
                     createdAt: now,
                 });
-                // Update referrer's tracking (they've now given out a qualified reward)
-                const referrerRef = getUserRef(rewardData.referrerId);
-                const referrerDoc = await transaction.get(referrerRef);
-                if (referrerDoc.exists) {
-                    const referrerData = referrerDoc.data();
+                // If this was a referrer reward, update referrer tracking stats
+                if (rewardData.type === 'referral_reward') {
+                    const referrerRef = getUserRef(rewardData.referrerId);
                     transaction.update(referrerRef, {
                         referralRewardsGiven: admin.firestore.FieldValue.increment(1),
                         updatedAt: now,
                     });
-                    // Ensure referrer gets credit for referral bonus if not already credited
-                    // (This handles the case where initial reward was pending for user)
-                    const referrerNewBalance = (referrerData.coinsBalance || 0) + rewardData.amount;
-                    const referrerNewLifetime = (referrerData.lifetimeEarnings || 0) + rewardData.amount;
-                    transaction.update(referrerRef, {
-                        coinsBalance: referrerNewBalance,
-                        lifetimeEarnings: referrerNewLifetime,
-                    });
-                    // Create transaction record for referrer
-                    const referrerTxRef = db.collection("user_transactions").doc();
-                    transaction.set(referrerTxRef, {
-                        userId: rewardData.referrerId,
-                        type: "credit",
-                        amount: rewardData.amount,
-                        reason: "referral_reward_qualified",
-                        balanceBefore: referrerData.coinsBalance || 0,
-                        balanceAfter: referrerNewBalance,
-                        metadata: {
-                            rewardId: rewardData.rewardId,
-                            referredUserId: rewardData.userId,
-                            processingType: "pending_qualification",
-                        },
-                        createdAt: now,
-                    });
                 }
                 processedCount++;
-                console.log(`Processed reward ${rewardData.rewardId} for user ${rewardData.userId}`);
+                console.log(`Processed reward ${rewardDoc.id} for user ${targetUserId}`);
             }
             catch (error) {
                 console.error(`Error processing reward ${rewardDoc.id}:`, error);

@@ -104,4 +104,20 @@ describe('Firestore Security Rules Suite', () => {
       assert.match(match[1], /allow write:\s*if false;/);
     });
   });
+
+  describe('Poll Votes & User Tasks Lockdown', () => {
+    it('denies direct client creation of poll votes', () => {
+      const match = rulesContent.match(/match\s*\/poll_votes\/\{voteId\}\s*\{([\s\S]*?)\}/);
+      assert.ok(match, 'match /poll_votes/{voteId} block must exist');
+      const block = match[1];
+      assert.match(block, /allow create,\s*update,\s*delete:\s*if false;/);
+    });
+
+    it('denies direct client creation of user tasks', () => {
+      const match = rulesContent.match(/match\s*\/user_tasks\/\{taskId\}\s*\{([\s\S]*?)\}/);
+      assert.ok(match, 'match /user_tasks/{taskId} block must exist');
+      const block = match[1];
+      assert.match(block, /allow create,\s*update,\s*delete:\s*if false;/);
+    });
+  });
 });

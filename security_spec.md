@@ -9,6 +9,9 @@
 6. **Trusted Rejection Refund Process**: When an admin rejects a redemption via `reviewRedemption`, the spent coins are atomically refunded back to the user's `coinsBalance`, an audit credit is recorded in `user_transactions` with `reason: "redemption_refund"`, and `refunded: true` is locked on the redemption document.
 7. **Referral Uniqueness**: Referral codes cannot be applied more than once per user. Uniqueness is enforced atomically using dedicated durable lock documents in `/referral_claims/{userId}`. Client direct writes to `/referral_claims` are completely blocked (`allow write: if false;`).
 8. **Rate Limiting**: Sliding-window rate limiters defend the Express API against brute force and replay attacks: 120 req/min for general `/api/*`, 30 req/min for `/api/callbacks/*` and `/api/postbacks/*`, and 25 req/min for `/api/deals/click`.
+9. **Survey Verification**: Survey rewards can only be claimed if the provider (Cint) callback has explicitly marked the survey completion as 'verified' in the `survey_tokens` Firestore collection. Clients cannot directly call `completeSurvey` with arbitrary coin amounts without an existing verified token record.
+10. **Token Lifecycle**: Verification tokens are created as 'pending' in Firestore when a survey starts, and updated to 'verified' by trusted provider callbacks, and 'completed' upon successful coin award.
+11. **Idempotency**: All coin awards and survey status updates are executed within atomic Firestore transactions keyed by unique transaction IDs, ensuring no double-crediting occurs.
 
 ## 2. The "Dirty Dozen" Payloads (Denial Expected)
 1. **Ghost Field Escalation**: Client update with `{ "isAdmin": true }` or `{ "role": "admin" }` on `/users/{userId}` -> *DENIED*.
@@ -26,6 +29,6 @@
 
 ## 3. Automated Test Verification
 Automated test suites in `tests/` verify both rules and functions:
-- `tests/firestore.rules.test.ts`: Asserts default-deny, write locks on transactions, redemptions, scratch cards, referral claims, and profile isolation.
-- `tests/cloudFunctions.test.ts`: Asserts daily check-in consecutive streak rules, timezone normalization, poll voting bounds, redemption deduction, rejection refunds, admin coin adjustments, and referral uniqueness.
+- `tests/firestore.rules.test.ts`: Asserts default-deny, write locks on transactions, redemptions, scratch cards, referral claims, poll votes, user tasks, and profile isolation.
+- `tests/cloudFunctions.test.ts`: Asserts daily check-in consecutive streak rules, timezone normalization, poll voting bounds, redemption deduction, rejection refunds, admin coin adjustments, referral uniqueness, and survey completion token verification.
 - `tests/rateLimiter.test.ts`: Asserts memory rate limiter sliding window, 429 status code handling, headers, and reset timing.

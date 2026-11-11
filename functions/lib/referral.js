@@ -254,60 +254,71 @@ export const applyReferralCode = functions.https.onCall(async (request, response
             referralBonusesClaimed: admin.firestore.FieldValue.increment(1),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
-        // Award referrer (if immediate or pending - stored in durable record)
-        const referrerNewBalance = (referrerData.coinsBalance || 0) + bonus;
-        const referrerNewLifetime = (referrerData.lifetimeEarnings || 0) + bonus;
-        transaction.update(referrerRef, {
-            coinsBalance: referrerNewBalance,
-            lifetimeEarnings: referrerNewLifetime,
-            dailyReferralsCount: admin.firestore.FieldValue.increment(1),
-            referralRewardsGiven: admin.firestore.FieldValue.increment(1),
-            dailyReferralRewards: admin.firestore.FieldValue.increment(bonus),
-            referralBonusesClaimed: admin.firestore.FieldValue.increment(1),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-        // Create transaction records for audit trail
-        const statusText = shouldIssueImmediately ? "qualified" : "pending_qualification";
-        const txRef1 = db.collection("user_transactions").doc();
-        transaction.set(txRef1, {
-            userId,
-            type: "credit",
-            amount: bonus,
-            reason: `referral_bonus_${statusText}`,
-            balanceBefore: userData.coinsBalance || 0,
-            balanceAfter: newBalance,
-            metadata: {
-                referrerCode: formattedCode,
-                referrerId,
-                fraudScore: totalFraudScore,
-                status: statusText,
-            },
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-        const txRef2 = db.collection("user_transactions").doc();
-        transaction.set(txRef2, {
-            userId: referrerId,
-            type: "credit",
-            amount: bonus,
-            reason: `referral_reward_${statusText}`,
-            balanceBefore: referrerData.coinsBalance || 0,
-            balanceAfter: referrerNewBalance,
-            metadata: {
-                referredUser: userId,
-                fraudScore: totalFraudScore,
-                status: statusText,
-            },
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
+        // Award referrer (if immediate)
+        let referrerNewBalance = referrerData.coinsBalance || 0;
+        let referrerNewLifetime = referrerData.lifetimeEarnings || 0;
+        if (shouldIssueImmediately) {
+            referrerNewBalance += bonus;
+            referrerNewLifetime += bonus;
+            transaction.update(referrerRef, {
+                coinsBalance: referrerNewBalance,
+                lifetimeEarnings: referrerNewLifetime,
+                dailyReferralsCount: admin.firestore.FieldValue.increment(1),
+                referralRewardsGiven: admin.firestore.FieldValue.increment(1),
+                dailyReferralRewards: admin.firestore.FieldValue.increment(bonus),
+                referralBonusesClaimed: admin.firestore.FieldValue.increment(1),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            // Create transaction records for audit trail
+            const statusText = "qualified";
+            const txRef1 = db.collection("user_transactions").doc();
+            transaction.set(txRef1, {
+                userId,
+                type: "credit",
+                amount: bonus,
+                reason: `referral_bonus_${statusText}`,
+                balanceBefore: userData.coinsBalance || 0,
+                balanceAfter: newBalance,
+                metadata: {
+                    referrerCode: formattedCode,
+                    referrerId,
+                    fraudScore: totalFraudScore,
+                    status: statusText,
+                },
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            const txRef2 = db.collection("user_transactions").doc();
+            transaction.set(txRef2, {
+                userId: referrerId,
+                type: "credit",
+                amount: bonus,
+                reason: `referral_reward_${statusText}`,
+                balanceBefore: referrerData.coinsBalance || 0,
+                balanceAfter: referrerNewBalance,
+                metadata: {
+                    referredUser: userId,
+                    fraudScore: totalFraudScore,
+                    status: statusText,
+                },
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+        }
+        else {
+            // Still need to update referrer's referral count even if pending
+            transaction.update(referrerRef, {
+                dailyReferralsCount: admin.firestore.FieldValue.increment(1),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+        }
         return {
             success: true,
             message: shouldIssueImmediately
                 ? `Code ${formattedCode} applied! +${bonus} Coins credited.`
-                : `Code ${formattedCode} applied! +${bonus} Coins awarded to referrer. Your bonus will be issued after 24 hours.`,
-            newBalance,
-            newLifetime,
+                : `Code ${formattedCode} applied! Your bonus will be issued after 24 hours.`,
+            newBalance: shouldIssueImmediately ? newBalance : userData.coinsBalance || 0,
+            newLifetime: shouldIssueImmediately ? newLifetime : userData.lifetimeEarnings || 0,
             fraudScore: totalFraudScore,
-            status: statusText,
+            status: shouldIssueImmediately ? "qualified" : "pending_qualification",
             qualifyingRequired: !shouldIssueImmediately,
         };
     });

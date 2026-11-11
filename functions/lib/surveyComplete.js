@@ -8,47 +8,34 @@ import { db, getUserRef } from "./helpers";
 const DEV_MODE = process.env.SURVEY_DEV_MODE === 'true' ||
     process.env.NODE_ENV !== 'production';
 /**
- * In-memory token store for verification (maps taskId -> expiration)
- * In production, use Redis or DynamoDB for distributed token storage.
- */
-const pendingVerifications = new Map();
-/**
  * Server-only function to start a survey completion verification.
- * This generates a time-limited token that the client must provide
- * when calling completeSurvey.
+ * This generates a token record in Firestore that must be verified
+ * by a provider callback before coins can be awarded.
  */
 async function generateVerificationToken(surveyId, userId) {
-    // Create a deterministic token based on surveyId, userId, and timestamp
-    const timestamp = Date.now();
-    const tokenId = `sv_${surveyId}_${userId}_${timestamp}`;
-    const expiry = timestamp + 10 * 60 * 1000; // 10 minutes
+    const tokenId = `sv_${surveyId}_${userId}`;
+    const tokenRef = db.collection("survey_tokens").doc(tokenId);
     // Store the pending verification
-    pendingVerifications.set(tokenId, expiry);
-    // Clean up expired tokens periodically
-    if (pendingVerifications.size > 1000) {
-        const now = Date.now();
-        for (const [key, expiry] of pendingVerifications.entries()) {
-            if (expiry < now) {
-                pendingVerifications.delete(key);
-            }
-        }
-    }
+    await tokenRef.set({
+        userId,
+        surveyId,
+        status: 'pending',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     return tokenId;
 }
 /**
- * Verifies a survey completion token is valid and not expired.
+ * Verifies that a survey completion record exists and is marked as 'verified'
+ * by a provider callback.
  */
-function verifyToken(tokenId) {
-    const expiry = pendingVerifications.get(tokenId);
-    if (!expiry)
+async function verifyToken(surveyId, userId) {
+    const tokenId = `sv_${surveyId}_${userId}`;
+    const tokenRef = db.collection("survey_tokens").doc(tokenId);
+    const tokenDoc = await tokenRef.get();
+    if (!tokenDoc.exists)
         return false;
-    if (Date.now() > expiry) {
-        pendingVerifications.delete(tokenId);
-        return false;
-    }
-    // Token is valid - remove it (one-time use)
-    pendingVerifications.delete(tokenId);
-    return true;
+    const data = tokenDoc.data();
+    return data?.status === 'verified';
 }
 /**
  * HTTPS callable to request survey completion verification token.
@@ -109,13 +96,14 @@ export const completeSurvey = functions.https.onCall(async (request, response) =
     }
     // SECURITY: In production, require verification token
     if (!DEV_MODE) {
-        if (!verificationToken || !verifyToken(verificationToken)) {
-            throw new functions.https.HttpsError("failed-precondition", "Invalid or expired verification token. Use requestSurveyVerification first.");
+        if (!await verifyToken(surveyId, userId)) {
+            throw new functions.https.HttpsError("failed-precondition", "Survey not verified by provider. Complete survey through provider link first.");
         }
     }
     const surveyRef = db.collection("surveys").doc(surveyId);
     const taskRef = db.collection("user_tasks").doc(`${surveyId}_${userId}`);
     const userRef = getUserRef(userId);
+    const tokenRef = db.collection("survey_tokens").doc(`sv_${surveyId}_${userId}`);
     return await db.runTransaction(async (transaction) => {
         const surveyDoc = await transaction.get(surveyRef);
         if (!surveyDoc.exists) {
@@ -141,6 +129,11 @@ export const completeSurvey = functions.https.onCall(async (request, response) =
             rewardCoins: reward,
             completedAt: admin.firestore.FieldValue.serverTimestamp(),
             answers: answers || {},
+        });
+        // Mark token as completed
+        transaction.update(tokenRef, {
+            status: 'completed',
+            completedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
         // Update user balance atomically
         transaction.update(userRef, {

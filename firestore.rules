@@ -92,10 +92,7 @@ service cloud.firestore {
     match /poll_votes/{voteId} {
       allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
-      allow create: if isSignedIn() &&
-                       isValidId(voteId) &&
-                       isValidPollVote(incoming());
-      allow update, delete: if isAdmin();
+      allow create, update, delete: if false; // All voting must go through votePoll callable function
     }
 
     // Offers Collection
@@ -105,25 +102,10 @@ service cloud.firestore {
     }
 
     // User Tasks Collection
-    function isValidUserTask(data) {
-      return data.offerId is string && data.offerId.size() <= 128 &&
-             data.userId == request.auth.uid &&
-             data.status in ['in_progress', 'completed', 'verified'] &&
-             data.rewardCoins is int && data.rewardCoins >= 0;
-    }
-
     match /user_tasks/{taskId} {
       allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
-      allow create: if isSignedIn() &&
-                       isValidId(taskId) &&
-                       isValidUserTask(incoming());
-      allow update: if (isSignedIn() &&
-                       resource.data.userId == request.auth.uid &&
-                       incoming().userId == existing().userId &&
-                       incoming().offerId == existing().offerId &&
-                       incoming().diff(existing()).affectedKeys().hasOnly(['status', 'completedAt', 'updatedAt'])) || isAdmin();
-      allow delete: if isAdmin();
+      allow create, update, delete: if false; // All task updates must go through server-side logic
     }
 
     // Redemptions Collection
