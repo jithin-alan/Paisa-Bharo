@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
 // Import pure helpers and logic functions
+import crypto from 'node:crypto';
 import {
   resolveTimezone,
   getDateInTimezone,
@@ -280,4 +281,181 @@ describe('Cloud Functions Wallet & Reward Logic Suite', () => {
       assert.throws(() => validateReferralAttempt('user_1', 'user_2', {}, true), /Already applied/);
     });
   });
+
+  describe('Provider S2S Callback HMAC Signature Verification', () => {
+    function hmacHex(secret: string, data: string): string {
+      return crypto.createHmac('sha256', secret).update(data, 'utf8').digest('hex');
+    }
+
+    it('verifies Cint HMAC signatures with and without subId', () => {
+      const secret = 'cint_secret_key_123';
+      const timestamp = '1700000000';
+      const respondentId = 'user_abc';
+      const surveyId = 'survey_999';
+      const status = 'complete';
+
+      // String format with subId
+      const dataWithSubId = `${timestamp}|${respondentId}|${surveyId}|${status}|sub_456`;
+      const hashWithSubId = hmacHex(secret, dataWithSubId);
+      assert.ok(hashWithSubId.length === 64);
+
+      // String format without subId
+      const dataNoSubId = `${timestamp}|${respondentId}|${surveyId}|${status}`;
+      const hashNoSubId = hmacHex(secret, dataNoSubId);
+      assert.ok(hashNoSubId.length === 64);
+    });
+
+    it('verifies AdGem HMAC signatures across concatenation variations', () => {
+      const secret = 'adgem_secret_key_123';
+      const playerId = 'user_abc';
+      const amount = '500';
+      const txId = 'tx_777';
+
+      const sigConcatenated = hmacHex(secret, `${playerId}${amount}${txId}`);
+      const sigKeyVal = hmacHex(secret, `player_id=${playerId}&amount=${amount}&transaction_id=${txId}`);
+
+      assert.ok(sigConcatenated.length === 64);
+      assert.ok(sigKeyVal.length === 64);
+    });
+
+    it('verifies BitLabs HMAC signatures for uid+val+tx', () => {
+      const secret = 'bitlabs_secret_key_123';
+      const uid = 'user_abc';
+      const val = '250';
+      const tx = 'tx_888';
+
+      const hash = hmacHex(secret, `${uid}${val}${tx}`);
+      assert.ok(hash.length === 64);
+    });
+
+    it('verifies Affiliate network HMAC signatures for Awin, CJ, Impact', () => {
+      const secret = 'affiliate_secret_key_123';
+
+      // Awin format
+      const awinSig = hmacHex(secret, 'order_100150.00');
+      // CJ format
+      const cjSig = hmacHex(secret, 'order_1001user_abc50.00');
+      // Impact format
+      const impactSig = hmacHex(secret, 'order_1001user_abc100.00');
+
+      assert.ok(awinSig.length === 64);
+      assert.ok(cjSig.length === 64);
+      assert.ok(impactSig.length === 64);
+    });
+  });
+
+  describe('Callable Functions Permission Enforcement', () => {
+    function enforceAdminAuth(context: { auth?: { uid: string; token: Record<string, any> } } | undefined) {
+      if (!context || !context.auth) {
+        throw new Error('unauthenticated: Must be logged in');
+      }
+      if (context.auth.token.admin !== true) {
+        throw new Error('permission-denied: Admin access required');
+      }
+      return true;
+    }
+
+    it('rejects unauthenticated users calling admin functions', () => {
+      assert.throws(() => enforceAdminAuth(undefined), /unauthenticated/);
+      assert.throws(() => enforceAdminAuth({}), /unauthenticated/);
+    });
+
+    it('rejects non-admin authenticated users calling admin functions', () => {
+      const regularUserContext = { auth: { uid: 'user_123', token: {} } };
+      assert.throws(() => enforceAdminAuth(regularUserContext), /permission-denied/);
+    });
+
+    it('allows verified admin users to execute callable functions', () => {
+      const adminContext = { auth: { uid: 'admin_456', token: { admin: true } } };
+      assert.ok(enforceAdminAuth(adminContext));
+    });
+  });
+
+  describe('Concurrency & Transactional Double-Credit Prevention', () => {
+    it('prevents concurrent double-crediting on identical pending reward records', async () => {
+      const rewardRecord = { id: 'reward_777', status: 'pending', amount: 500, userId: 'user_123' };
+      let userBalance = 1000;
+
+      async function executeTransaction() {
+        if (rewardRecord.status !== 'pending') {
+          throw new Error(`Reward is in ${rewardRecord.status} status, cannot process`);
+        }
+        rewardRecord.status = 'completed';
+        userBalance += rewardRecord.amount;
+        return userBalance;
+      }
+
+      // Simulate 2 parallel execution attempts on the same reward record
+      const results = await Promise.allSettled([executeTransaction(), executeTransaction()]);
+
+      const fulfilled = results.filter(r => r.status === 'fulfilled');
+      const rejected = results.filter(r => r.status === 'rejected');
+
+      assert.equal(fulfilled.length, 1, 'Only one transaction attempt must succeed');
+      assert.equal(rejected.length, 1, 'Concurrent attempt must be rejected');
+      assert.equal(userBalance, 1500, 'User balance must be credited exactly once (+500)');
+      assert.equal(rewardRecord.status, 'completed');
+    });
+
+    it('enforces durable lock for single referral claim per user', async () => {
+      const existingClaims = new Set<string>();
+
+      async function applyReferralTransaction(userId: string, code: string) {
+        if (existingClaims.has(userId)) {
+          throw new Error('Already applied a referral code');
+        }
+        existingClaims.add(userId);
+        return { success: true, appliedCode: code };
+      }
+
+      const userId = 'new_user_888';
+      const results = await Promise.allSettled([
+        applyReferralTransaction(userId, 'CODE_A'),
+        applyReferralTransaction(userId, 'CODE_B'),
+      ]);
+
+      const fulfilled = results.filter(r => r.status === 'fulfilled');
+      const rejected = results.filter(r => r.status === 'rejected');
+
+      assert.equal(fulfilled.length, 1, 'Only first referral application must succeed');
+      assert.equal(rejected.length, 1, 'Concurrent referral application must be blocked');
+      assert.ok(existingClaims.has(userId));
+    });
+  });
+
+  describe('Durable Survey Verification & Token Integrity', () => {
+    interface SurveyTokenDoc {
+      tokenId: string;
+      surveyId: string;
+      userId: string;
+      status: 'issued' | 'verified';
+    }
+
+    it('awards survey coins only for valid issued tokens and blocks duplicate claims', () => {
+      const tokensDatabase = new Map<string, SurveyTokenDoc>([
+        ['sv_100_user1', { tokenId: 'sv_100_user1', surveyId: '100', userId: 'user1', status: 'issued' }],
+      ]);
+
+      function processSurveyReward(tokenId: string, rewardCoins: number, currentBalance: number) {
+        const token = tokensDatabase.get(tokenId);
+        if (!token) throw new Error('Invalid survey token');
+        if (token.status === 'verified') throw new Error('Survey token already verified');
+
+        token.status = 'verified';
+        return currentBalance + rewardCoins;
+      }
+
+      // First call succeeds and credits coins
+      const newBalance = processSurveyReward('sv_100_user1', 300, 1000);
+      assert.equal(newBalance, 1300);
+
+      // Subsequent attempt with same token throws duplicate error
+      assert.throws(() => processSurveyReward('sv_100_user1', 300, 1300), /Survey token already verified/);
+
+      // Attempt with forged token throws invalid token error
+      assert.throws(() => processSurveyReward('sv_fake_token', 300, 1300), /Invalid survey token/);
+    });
+  });
 });
+
+

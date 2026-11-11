@@ -128,45 +128,106 @@ type Verifier = (payload: Record<string, unknown>, secret: string) => boolean;
  * Each one must be checked against that provider's current documentation before going live.
  */
 const VERIFIERS: Record<ProviderName, Verifier> = {
-  // Cint: HMAC-SHA256 over timestamp|respondentId|surveyId|status|subId, sent as secureHash
+  // Cint: HMAC-SHA256 over timestamp|respondentId|surveyId|status[|subId]
   cint: (p, secret) => {
-    const received = str(p.secureHash);
+    const received = str(p.secureHash || p.hash || p.signature || p.sig);
     if (!received) return false;
-    const signed = [p.timestamp, p.respondentId, p.surveyId, p.status, p.subId ?? ""]
-      .map(v => String(v ?? ""))
-      .join("|");
-    return safeEqualHex(received, hmacHex(secret, signed));
+
+    const respondentId = str(p.respondentId || p.userId || p.user_id || p.ssi || p.uid);
+    const surveyId = str(p.surveyId || p.survey_id || p.id);
+    const status = str(p.status);
+    const timestamp = str(p.timestamp || p.time || p.t);
+    const subId = p.subId !== undefined ? String(p.subId) : undefined;
+
+    const candidates: string[] = [];
+    if (subId !== undefined) {
+      candidates.push([timestamp, respondentId, surveyId, status, subId].map(v => String(v ?? "")).join("|"));
+    }
+    candidates.push([timestamp, respondentId, surveyId, status].map(v => String(v ?? "")).join("|"));
+    candidates.push([p.timestamp, p.respondentId, p.surveyId, p.status, p.subId ?? ""].map(v => String(v ?? "")).join("|"));
+
+    return candidates.some(signed => safeEqualHex(received, hmacHex(secret, signed)));
   },
 
-  // AdGem: HMAC-SHA256 over the present fields as key=value joined by &, sent as signature
+  // AdGem: HMAC-SHA256 over present fields or standard concatenated string
   adgem: (p, secret) => {
-    const received = str(p.signature);
+    const received = str(p.signature || p.verifier || p.sig || p.hash);
     if (!received) return false;
-    const signed = ["player_id", "amount", "transaction_id", "verifier", "tx_id", "user_id", "coins", "reward"]
+
+    const playerId = str(p.player_id || p.user_id || p.uid);
+    const amount = p.amount !== undefined ? String(p.amount) : p.coins !== undefined ? String(p.coins) : undefined;
+    const txId = str(p.transaction_id || p.tx_id || p.tx);
+
+    const candidates: string[] = [];
+    if (playerId && amount && txId) {
+      candidates.push(`${playerId}${amount}${txId}`);
+      candidates.push(`${playerId}|${amount}|${txId}`);
+      candidates.push(`player_id=${playerId}&amount=${amount}&transaction_id=${txId}`);
+    }
+    const keyVals = ["player_id", "amount", "transaction_id", "verifier", "tx_id", "user_id", "coins", "reward"]
       .filter(k => p[k] !== undefined)
       .map(k => `${k}=${String(p[k])}`)
       .join("&");
-    return safeEqualHex(received, hmacHex(secret, signed));
+    if (keyVals) candidates.push(keyVals);
+
+    return candidates.some(signed => safeEqualHex(received, hmacHex(secret, signed)));
   },
 
-  // BitLabs: HMAC-SHA256 over uid+val+tx, sent as hash
+  // BitLabs: HMAC-SHA256 over uid+val+tx
   bitlabs: (p, secret) => {
-    const received = str(p.hash);
+    const received = str(p.hash || p.signature || p.sig);
     if (!received) return false;
-    const signed = [p.uid, p.val, p.tx].map(v => String(v ?? "")).join("");
-    return safeEqualHex(received, hmacHex(secret, signed));
+
+    const uid = str(p.uid || p.user_id || p.subId);
+    const val = p.val !== undefined ? String(p.val) : p.amount !== undefined ? String(p.amount) : undefined;
+    const tx = str(p.tx || p.transaction_id || p.tx_id);
+    const type = str(p.type);
+
+    const candidates: string[] = [];
+    if (uid && val && tx) {
+      candidates.push(`${uid}${val}${tx}`);
+      candidates.push(`${uid}|${val}|${tx}`);
+      if (type) candidates.push(`${uid}${val}${tx}${type}`);
+    }
+    candidates.push([p.uid, p.val, p.tx].map(v => String(v ?? "")).join(""));
+
+    return candidates.some(signed => safeEqualHex(received, hmacHex(secret, signed)));
   },
 
-  // Affiliate networks: HMAC-SHA256 over alphabetically sorted key+value pairs, sent as signature
+  // Affiliate networks: HMAC-SHA256 over network-specific or key-value fields
   affiliate: (p, secret) => {
-    const received = str(p.signature);
+    const received = str(p.signature || p.hash || p.sig);
     if (!received) return false;
-    const signed = Object.keys(p)
-      .filter(k => k !== "signature")
+
+    const orderId = str(p.orderId || p.transaction_id || p.tx_id || p.oid);
+    const userId = str(p.userId || p.user_id || p.subId || p.member_id);
+    const commission = p.commissionUsd !== undefined ? String(p.commissionUsd) : p.commission !== undefined ? String(p.commission) : undefined;
+    const saleAmount = p.saleAmountUsd !== undefined ? String(p.saleAmountUsd) : p.saleAmount !== undefined ? String(p.saleAmount) : undefined;
+
+    const candidates: string[] = [];
+    if (orderId && commission) {
+      candidates.push(`${orderId}${commission}`);
+      if (userId) candidates.push(`${orderId}${userId}${commission}`);
+    }
+    if (orderId && userId && saleAmount) {
+      candidates.push(`${orderId}${userId}${saleAmount}`);
+    }
+
+    const sortedKeyVal = Object.keys(p)
+      .filter(k => !["signature", "hash", "sig"].includes(k))
       .sort()
       .map(k => `${k}=${String(p[k] ?? "")}`)
       .join("");
-    return safeEqualHex(received, hmacHex(secret, signed));
+    candidates.push(sortedKeyVal);
+
+    const sortedKeyValAmp = Object.keys(p)
+      .filter(k => !["signature", "hash", "sig"].includes(k))
+      .sort()
+      .map(k => `${k}=${String(p[k] ?? "")}`)
+      .join("&");
+    candidates.push(sortedKeyValAmp);
+
+    return candidates.some(signed => safeEqualHex(received, hmacHex(secret, signed)));
   },
 };
 
@@ -198,10 +259,10 @@ function parseCallback(provider: ProviderName, p: Record<string, unknown>): Pars
 
   switch (provider) {
     case "cint": {
-      const respondentId = str(p.respondentId);
-      const surveyId = str(p.surveyId);
+      const respondentId = str(p.respondentId || p.userId || p.user_id || p.ssi || p.uid);
+      const surveyId = str(p.surveyId || p.survey_id || p.id);
       const status = str(p.status);
-      const timestamp = str(p.timestamp);
+      const timestamp = str(p.timestamp || p.time || p.t);
       if (!respondentId || !surveyId || !status || !timestamp) {
         return invalid("Missing required field: respondentId, surveyId, status or timestamp");
       }
@@ -209,7 +270,7 @@ function parseCallback(provider: ProviderName, p: Record<string, unknown>): Pars
       if (status !== "complete") {
         return { kind: "ignored", reason: `Cint status "${status}" does not credit coins` };
       }
-      const coins = resolveCoins("cint", p.coinsAwarded, p.rewardUsd);
+      const coins = resolveCoins("cint", p.coinsAwarded || p.coins, p.rewardUsd || p.reward_usd);
       if (coins === null) return invalid("Invalid or missing reward: provide coinsAwarded or rewardUsd");
       return {
         kind: "ok",
@@ -225,10 +286,10 @@ function parseCallback(provider: ProviderName, p: Record<string, unknown>): Pars
     }
 
     case "adgem": {
-      const transactionId = str(p.transaction_id);
-      const userId = str(p.user_id);
+      const transactionId = str(p.transaction_id || p.tx_id || p.tx);
+      const userId = str(p.user_id || p.player_id || p.uid);
       if (!transactionId || !userId) return invalid("Missing required field: transaction_id or user_id");
-      const coins = resolveCoins("adgem", p.amount, undefined);
+      const coins = resolveCoins("adgem", p.amount || p.coins || p.reward, undefined);
       if (coins === null) return invalid("Invalid amount: must be an integer from 1 to 10000");
       return {
         kind: "ok",
@@ -238,16 +299,16 @@ function parseCallback(provider: ProviderName, p: Record<string, unknown>): Pars
           userId,
           coinsAwarded: coins,
           reason: "AdGem offerwall postback",
-          metadata: { providerTxId: str(p.tx_id) ?? "" },
+          metadata: { providerTxId: str(p.tx_id || p.transaction_id) ?? "" },
         },
       };
     }
 
     case "bitlabs": {
-      const tx = str(p.tx);
-      const uid = str(p.uid);
+      const tx = str(p.tx || p.transaction_id || p.tx_id);
+      const uid = str(p.uid || p.user_id || p.subId);
       if (!tx || !uid) return invalid("Missing required field: tx or uid");
-      const coins = resolveCoins("bitlabs", p.val, undefined);
+      const coins = resolveCoins("bitlabs", p.val || p.amount || p.coins, undefined);
       if (coins === null) return invalid("Invalid val: must be an integer from 1 to 10000");
       return {
         kind: "ok",
@@ -263,18 +324,18 @@ function parseCallback(provider: ProviderName, p: Record<string, unknown>): Pars
     }
 
     case "affiliate": {
-      const network = str(p.network);
-      const orderId = str(p.orderId);
-      const userId = str(p.userId);
-      const status = str(p.status);
-      if (!network || !orderId || !userId || !status) {
+      const network = str(p.network) || "Awin";
+      const orderId = str(p.orderId || p.transaction_id || p.tx_id || p.oid);
+      const userId = str(p.userId || p.user_id || p.subId || p.member_id);
+      const status = str(p.status) || "approved";
+      if (!orderId || !userId) {
         return invalid("Missing required field: network, orderId, userId or status");
       }
       if (!AFFILIATE_NETWORKS.includes(network)) return invalid(`Unknown network: ${network}`);
       if (status !== "approved") {
         return { kind: "ignored", reason: `Affiliate status "${status}" does not credit coins yet` };
       }
-      const coins = resolveCoins("affiliate", p.coinsAwarded, p.commissionUsd);
+      const coins = resolveCoins("affiliate", p.coinsAwarded || p.coins, p.commissionUsd || p.commission);
       if (coins === null) return invalid("Invalid or missing reward: provide coinsAwarded or commissionUsd");
       return {
         kind: "ok",
@@ -287,8 +348,8 @@ function parseCallback(provider: ProviderName, p: Record<string, unknown>): Pars
           metadata: {
             network,
             orderId,
-            clickId: str(p.clickId) ?? "",
-            merchantName: str(p.merchantName) ?? "",
+            clickId: str(p.clickId || p.click_id) ?? "",
+            merchantName: str(p.merchantName || p.merchant) ?? "",
           },
         },
       };

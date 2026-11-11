@@ -131,23 +131,23 @@ export const processReferralReward = functions.https.onCall(async (request, resp
     if (!rewardId) {
         throw new functions.https.HttpsError("invalid-argument", "Missing rewardId");
     }
+    // Strictly enforce admin access
+    if (!isAdminUser(context)) {
+        throw new functions.https.HttpsError("permission-denied", "Admin access required");
+    }
     const now = admin.firestore.Timestamp.now();
     const rewardRef = db.collection("referral_rewards").doc(rewardId);
-    const rewardSnap = await rewardRef.get();
-    if (!rewardSnap.exists) {
-        throw new functions.https.HttpsError("not-found", "Reward not found");
-    }
-    const rewardData = rewardSnap.data();
-    if (rewardData.status !== "pending") {
-        throw new functions.https.HttpsError("failed-precondition", `Reward is in ${rewardData.status} status, cannot process`);
-    }
-    // Verify admin access or owner access
-    const isOwner = rewardData.userId === context.uid || rewardData.referrerId === context.uid;
-    if (!isOwner && !isAdminUser(context)) {
-        throw new functions.https.HttpsError("permission-denied", "Not authorized to process this reward");
-    }
-    await db.runTransaction(async (transaction) => {
-        const userRef = getUserRef(rewardData.userId);
+    return await db.runTransaction(async (transaction) => {
+        const rewardDoc = await transaction.get(rewardRef);
+        if (!rewardDoc.exists) {
+            throw new functions.https.HttpsError("not-found", "Reward not found");
+        }
+        const rewardData = rewardDoc.data();
+        if (rewardData.status !== "pending") {
+            throw new functions.https.HttpsError("failed-precondition", `Reward is in ${rewardData.status} status, cannot process`);
+        }
+        const targetUserId = rewardData.userId;
+        const userRef = getUserRef(targetUserId);
         const userDoc = await transaction.get(userRef);
         if (!userDoc.exists) {
             throw new functions.https.HttpsError("not-found", "User not found");
@@ -166,26 +166,21 @@ export const processReferralReward = functions.https.onCall(async (request, resp
             status: "completed",
             completedAt: now,
         });
-        // Also award to referrer
-        const referrerRef = getUserRef(rewardData.referrerId);
-        const referrerDoc = await transaction.get(referrerRef);
-        if (referrerDoc.exists) {
-            const referrerData = referrerDoc.data();
-            const referrerNewBalance = (referrerData.coinsBalance || 0) + rewardData.amount;
-            const referrerNewLifetime = (referrerData.lifetimeEarnings || 0) + rewardData.amount;
+        // If this was a referrer reward, update referrer tracking stats
+        if (rewardData.type === "referral_reward") {
+            const referrerRef = getUserRef(rewardData.referrerId);
             transaction.update(referrerRef, {
-                coinsBalance: referrerNewBalance,
-                lifetimeEarnings: referrerNewLifetime,
+                referralRewardsGiven: admin.firestore.FieldValue.increment(1),
                 updatedAt: now,
             });
         }
-        // Transaction record
+        // Transaction record for recipient
         const txRef = db.collection("user_transactions").doc();
         transaction.set(txRef, {
-            userId: rewardData.userId,
+            userId: targetUserId,
             type: "credit",
             amount: rewardData.amount,
-            reason: "referral_bonus_manual_process",
+            reason: rewardData.type === "bonus" ? "referral_bonus_manual_process" : "referral_reward_manual_process",
             balanceBefore: currentBalance,
             balanceAfter: newBalance,
             metadata: {
@@ -194,7 +189,7 @@ export const processReferralReward = functions.https.onCall(async (request, resp
             },
             createdAt: now,
         });
+        return { success: true, message: "Reward processed successfully" };
     });
-    return { success: true, message: "Reward processed successfully" };
 });
 //# sourceMappingURL=processReferralRewards.js.map
