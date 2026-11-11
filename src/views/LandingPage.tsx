@@ -273,9 +273,9 @@ export const LandingPage: React.FC<Props> = ({
               { id: 'earn', label: 'Earn' },
               { id: 'reviews', label: 'Reviews' },
               { id: 'faq', label: 'FAQ' },
-            ].map((item) => (
+            ].map((item, idx) => (
               <button
-                key={item.id}
+                key={`landing-nav-${item.id}-${idx}`}
                 type="button"
                 onClick={() => scrollTo(item.id)}
                 className="hover:text-[#7848f4]"
@@ -385,8 +385,8 @@ export const LandingPage: React.FC<Props> = ({
                             onChange={(e) => setCountryCode(e.target.value)}
                             className="w-28 px-3 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#7848f4] bg-white text-sm appearance-none cursor-pointer"
                           >
-                            {sortedCountryCodes.map((country) => (
-                              <option key={country.code} value={country.code}>
+                            {sortedCountryCodes.map((country, idx) => (
+                              <option key={`country-${country.code}-${country.name}-${idx}`} value={country.code}>
                                 {country.code} {country.name.split(' ').pop()}
                               </option>
                             ))}

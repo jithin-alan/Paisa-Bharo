@@ -136,11 +136,11 @@ export const SurveyModal: React.FC = () => {
               {question.type === 'rating' ? (
                 <div className="py-4 space-y-3">
                   <div className="flex items-center justify-center gap-3">
-                    {[1, 2, 3, 4, 5].map((star) => {
+                    {[1, 2, 3, 4, 5].map((star, idx) => {
                       const selected = answers[question.id] >= star;
                       return (
                         <button
-                          key={star}
+                          key={`star-${question.id}-${star}-${idx}`}
                           onClick={() => handleRate(star)}
                           className={`p-3 rounded-2xl border transition-all transform active:scale-95 ${
                             selected

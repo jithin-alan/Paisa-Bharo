@@ -99,9 +99,9 @@ export const OffersView: React.FC = () => {
 
       {/* Category Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-        {categories.map((cat) => (
+        {categories.map((cat, idx) => (
           <button
-            key={cat.id}
+            key={`offercat-${cat.id}-${idx}`}
             onClick={() => setActiveCategory(cat.id)}
             className={`px-4 py-2 rounded-full text-xs font-bold shrink-0 transition cursor-pointer ${
               activeCategory === cat.id

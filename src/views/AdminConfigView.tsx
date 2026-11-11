@@ -397,9 +397,9 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
           <div className="px-6 pb-6 pt-2">
             {/* Filter buttons */}
             <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
-              {(['all', 'pending', 'completed', 'rejected'] as const).map(f => (
+              {(['all', 'pending', 'completed', 'rejected'] as const).map((f, idx) => (
                 <button
-                  key={f}
+                  key={`admin-filter-${f}-${idx}`}
                   onClick={() => setRedemptionFilter(f)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold capitalize transition cursor-pointer ${
                     redemptionFilter === f

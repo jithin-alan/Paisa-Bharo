@@ -140,9 +140,9 @@ export const WebhookTesterModal: React.FC<Props> = ({ isOpen, onClose }) => {
             { id: 'adgem', label: '2. AdGem Offerwall' },
             { id: 'bitlabs', label: '3. BitLabs (Backup)' },
             { id: 'affiliate', label: '4. Deals & Cashback' },
-          ].map((tab) => (
+          ].map((tab, idx) => (
             <button
-              key={tab.id}
+              key={`webhook-tab-${tab.id}-${idx}`}
               onClick={() => {
                 setActiveTab(tab.id as any);
                 setResponseLog(null);

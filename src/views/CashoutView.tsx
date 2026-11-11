@@ -88,11 +88,11 @@ export const CashoutView: React.FC = () => {
         <div className="flex items-center gap-2 bg-[#f0ebfc] p-1.5 rounded-2xl border border-[#e5dcfa] self-start sm:self-auto">
           <span className="text-xs text-gray-600 px-2 font-bold">Currency:</span>
           <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-            {Object.keys(SUPPORTED_CURRENCIES).map((currCode) => {
+            {Object.keys(SUPPORTED_CURRENCIES).map((currCode, idx) => {
               const conf = SUPPORTED_CURRENCIES[currCode];
               return (
                 <button
-                  key={currCode}
+                  key={`cashout-curr-${currCode}-${idx}`}
                   onClick={() => setCurrency(currCode)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1 cursor-pointer ${
                     selectedCurrency === currCode
