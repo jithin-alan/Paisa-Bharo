@@ -14,3 +14,5 @@ export const claimScratchCardFn = httpsCallable(functions, 'claimScratchCard');
 export const requestRedemptionFn = httpsCallable(functions, 'requestRedemption');
 export const applyReferralCodeFn = httpsCallable(functions, 'applyReferralCode');
 export const awardCoinsFn = httpsCallable(functions, 'awardCoins');
+// NEW: Request survey verification token for secure survey completion flow
+export const requestSurveyVerificationFn = httpsCallable(functions, 'requestSurveyVerification');

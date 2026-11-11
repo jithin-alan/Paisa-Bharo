@@ -1,13 +1,23 @@
 /**
- * Script to set admin custom claims for a Firebase user
+ * Script to grant/revoke admin access via Firebase Auth custom claims
+ *
+ * This is the ONLY authorized way to grant admin access to users.
+ * Admin access is determined by the 'admin' custom claim in the Firebase ID token.
  *
  * Usage:
- *   node scripts/set-admin-claims.js <email>
+ *   node scripts/set-admin-claims.js <email>        # Grant admin access
+ *   node scripts/set-admin-claims.js <email> --remove  # Revoke admin access
  *
- * This script:
- * 1. Looks up the user by email in Firebase Auth
- * 2. Sets the 'admin' custom claim to true
- * 3. Optionally removes the claim with: node scripts/set-admin-claims.js <email> --remove
+ * Prerequisites:
+ * - Firebase Admin SDK initialized with service account credentials
+ * - Set GOOGLE_APPLICATION_CREDENTIALS environment variable
+ *
+ * Security Note:
+ * - This script sets custom claims server-side (secure)
+ * - The 'useIsAdmin' hook and Firestore rules check these claims
+ * - Do NOT use email-based admin detection - only custom claims are trusted
+ * - The 'loginAsAdmin()' function has been removed from the frontend
+ *   as it was insecure (allowed bypassing Firebase Auth entirely)
  */
 
 import { initializeApp, credential } from 'firebase-admin/app';

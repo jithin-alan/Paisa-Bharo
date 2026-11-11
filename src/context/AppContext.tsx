@@ -13,7 +13,9 @@ import {
   requestRedemptionFn,
   applyReferralCodeFn,
   awardCoinsFn,
+  requestSurveyVerificationFn,
 } from '../services/cloudFunctions';
+import { useIsAdmin } from '../hooks/useIsAdmin';
 
 interface AppContextType {
   user: UserProfile;
@@ -34,7 +36,7 @@ interface AppContextType {
   votePoll: (pollId: string, optionIndex: number) => Promise<boolean>;
   completeSurvey: (surveyId: string, answers: Record<string, any>) => Promise<boolean>;
   claimDailyCheckIn: () => Promise<boolean>;
-  claimScratchCard: (coins: number) => Promise<boolean>;
+  claimScratchCard: () => Promise<{ success: boolean; coins: number }>;
   scratchCardAvailable: boolean;
   requestRedemption: (payoutMethod: string, amountCurrency: number, coinsSpent: number, accountDetails: string) => Promise<{ success: boolean; message?: string }>;
   applyReferralCode: (code: string) => Promise<{ success: boolean; message: string }>;
@@ -49,9 +51,6 @@ interface AppContextType {
   toast: { text: string; coins?: number; type?: 'success' | 'info' | 'error' } | null;
   showToast: (text: string, coins?: number, type?: 'success' | 'info' | 'error') => void;
   clearToast: () => void;
-  // Admin email check helper (for pre-login detection)
-  isAdminEmail: (email: string) => boolean;
-  loginAsAdmin: () => void;
   // System Settings & Admin Live Data
   systemSettings: SystemSettingsState;
   updateSystemSettings: (settings: Partial<SystemSettingsState>) => Promise<boolean>;
@@ -65,9 +64,6 @@ interface AppContextType {
     totalRedemptions: number;
   };
   refreshAdminData: () => Promise<void>;
-  // Internal state for pending admin detection
-  _pendingAdminEmail: string | null;
-  __setPendingAdminEmail: (email: string | null) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -86,39 +82,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState<UserProfile | null>(() => {
-    if (typeof window !== 'undefined' && localStorage.getItem('paisabhar_admin_override') === 'true') {
-      return {
-        uid: 'admin_sys_local',
-        email: 'admin@paisabharo.com',
-        displayName: 'System Admin',
-        photoURL: '',
-        coinsBalance: 50000,
-        lifetimeEarnings: 50000,
-        streakDays: 30,
-        lastCheckInDate: getTodayString(),
-        referralCode: 'PB-ADMIN',
-        country: 'IN',
-        currency: 'INR',
-        language: 'en',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        isAdmin: true,
-      };
-    }
     const saved = localStorage.getItem('paisabhar_user');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved) as UserProfile;
+        // Ensure all required fields have defaults (for when user is loaded from localStorage
+        // before Firestore sync completes or for backwards compatibility)
+        // Spread parsed FIRST, then override with defaults to ensure undefined values get defaults
+        return {
+          ...parsed,
+          coinsBalance: parsed.coinsBalance ?? 0,
+          lifetimeEarnings: parsed.lifetimeEarnings ?? 0,
+          streakDays: parsed.streakDays ?? 0,
+          isAdmin: false, // Set from custom claims in useIsAdmin hook
+        };
       } catch {
         // fallback
       }
     }
     return null;
   });
-
-  // Admin email detection - set when user enters credentials
-  const ADMIN_EMAILS = ['admin@paisabharo.com', 'stickadmob@gmail.com'];
-  const [pendingAdminEmail, setPendingAdminEmail] = useState<string | null>(null);
 
   const [selectedLanguage, setSelectedLanguage] = useState<string>(() => {
     return localStorage.getItem('paisabhar_lang') || 'en';
@@ -191,7 +174,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem('paisabhar_system_settings');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved) as SystemSettingsState;
+        // maintenanceMode is a global live setting — never trust the stale localStorage cache.
+        // The Firestore onSnapshot listener below is the single source of truth.
+        return { ...parsed, maintenanceMode: false };
       } catch {}
     }
     return {
@@ -318,6 +304,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setSystemSettings(prev => ({
             ...prev,
             ...data,
+            // Explicitly resolve maintenance mode from Firestore (defaults to OFF when
+            // the field is absent) so a stale localStorage value can never re-show
+            // the maintenance screen.
+            maintenanceMode: typeof data.maintenanceMode === 'boolean' ? data.maintenanceMode : false,
           }));
           if (data.offerwallProvider) {
             setActiveOfferwallProviderState(data.offerwallProvider);
@@ -333,13 +323,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
+  // Admin status is checked via custom claims
+  const { isAdmin } = useIsAdmin();
+
   // Real-time listener for all redemptions when user is an admin
   useEffect(() => {
-    const isUserAdmin =
-      (firebaseUser && ADMIN_EMAILS.includes(firebaseUser.email || '')) ||
-      (user && (user.isAdmin === true || ADMIN_EMAILS.includes(user.email || '')));
-
-    if (!isUserAdmin) return;
+    if (!isAdmin) return;
 
     try {
       const redemptionsCol = collection(db, 'redemptions');
@@ -358,7 +347,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (e) {
       console.warn('Failed to attach admin redemptions listener:', e);
     }
-  }, [firebaseUser, user?.isAdmin]);
+  }, [isAdmin]);
+
+  // Real-time listener for all users when user is an admin
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    try {
+      const usersCol = collection(db, 'users');
+      const unsub = onSnapshot(usersCol, (snapshot) => {
+        const uList: UserProfile[] = [];
+        let totalCoins = 0;
+        snapshot.forEach(docSnap => {
+          const d = docSnap.data() as UserProfile;
+          uList.push(d);
+          totalCoins += (d.coinsBalance || 0);
+        });
+        setAllUsers(uList);
+        setAdminStats(prev => ({ ...prev, totalUsers: uList.length, totalCoins: Math.max(totalCoins, user?.coinsBalance || 50000) }));
+      }, (err) => {
+        console.warn('Admin users listener notice:', err);
+      });
+      return () => unsub();
+    } catch (e) {
+      console.warn('Failed to attach admin users listener:', e);
+    }
+  }, [isAdmin]);
 
   const showToast = (text: string, coins?: number, type: 'success' | 'info' | 'error' = 'success') => {
     setToast({ text, coins, type });
@@ -399,11 +413,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [selectedCurrency]);
 
   // Auth observer and Firestore profile sync.
-  // Admin status is read from the token claim in useIsAdmin, not from here.
+  // Admin status is determined by custom claims via useIsAdmin hook.
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setFirebaseUser(fbUser);
       setAuthLoading(false);
+
+      // Clear any previous user state to avoid stale sessions
+      setUser(null);
 
       if (fbUser) {
         // Log user info for debugging
@@ -411,7 +428,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           uid: fbUser.uid,
           email: fbUser.email,
           displayName: fbUser.displayName,
-          isAdminEmail: ADMIN_EMAILS.includes(fbUser.email || '')
         });
         try {
           const userDocRef = doc(db, 'users', fbUser.uid);
@@ -419,26 +435,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
           if (snap.exists()) {
             const data = snap.data() as UserProfile;
+            // isAdmin comes from custom claims, not from email matching
+            // The useIsAdmin hook handles the authoritative check
             setUser({
               ...data,
-              isAdmin: ADMIN_EMAILS.includes(data.email || fbUser.email || ''),
+              isAdmin: false, // Will be corrected by useIsAdmin hook based on custom claims
             });
             if (data.language) setSelectedLanguage(data.language);
             if (data.currency) setSelectedCurrency(data.currency);
           } else {
-            // Only allowlisted profile fields.
-            const now = new Date().toISOString();
-            const isUserAdmin = ADMIN_EMAILS.includes(fbUser.email || '');
+            // New user - profile fields to be server-initialized with wallet fields
             const profileFields = {
               uid: fbUser.uid,
               email: fbUser.email || '',
-              displayName: fbUser.displayName || (isUserAdmin ? 'System Admin' : 'Paisa Poller'),
+              displayName: fbUser.displayName || 'Paisa Poller',
               photoURL: fbUser.photoURL || '',
               country: selectedCurrency === 'INR' ? 'IN' : 'US',
               currency: selectedCurrency,
               language: selectedLanguage,
-              createdAt: now,
-              updatedAt: now,
+              updatedAt: new Date().toISOString(),
             };
 
             try {
@@ -447,44 +462,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               console.warn('Profile write notice (handled):', setErr);
             }
 
-            // Local display state guaranteed to populate
+            // Local display state - coinsBalance, lifetimeEarnings, streakDays should be
+            // set by server/cloud functions, not client-side
             setUser({
               ...profileFields,
-              coinsBalance: isUserAdmin ? 50000 : 0,
-              lifetimeEarnings: isUserAdmin ? 50000 : 0,
-              streakDays: isUserAdmin ? 30 : 0,
+              coinsBalance: 0,
+              lifetimeEarnings: 0,
+              streakDays: 0,
               lastCheckInDate: '',
               referralCode: placeholderReferralCode(),
-              isAdmin: isUserAdmin,
+              isAdmin: false,
             } as UserProfile);
           }
         } catch (err) {
           console.warn('Firestore user fetch/create notice:', err);
-          const isUserAdmin = ADMIN_EMAILS.includes(fbUser.email || '');
           setUser({
             uid: fbUser.uid,
             email: fbUser.email || '',
-            displayName: fbUser.displayName || (isUserAdmin ? 'System Admin' : 'Paisa Poller'),
+            displayName: fbUser.displayName || 'Paisa Poller',
             photoURL: fbUser.photoURL || '',
             country: selectedCurrency === 'INR' ? 'IN' : 'US',
             currency: selectedCurrency,
             language: selectedLanguage,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            coinsBalance: isUserAdmin ? 50000 : 0,
-            lifetimeEarnings: isUserAdmin ? 50000 : 0,
-            streakDays: isUserAdmin ? 30 : 0,
+            coinsBalance: 0,
+            lifetimeEarnings: 0,
+            streakDays: 0,
             lastCheckInDate: '',
             referralCode: placeholderReferralCode(),
-            isAdmin: isUserAdmin,
+            isAdmin: false,
           } as UserProfile);
         }
       } else {
-        if (typeof window !== 'undefined' && localStorage.getItem('paisabhar_admin_override') === 'true') {
-          // Keep local admin session active
-        } else {
-          setUser(null);
-        }
+        // User signed out - clear all state
+        setUser(null);
       }
     });
 
@@ -603,13 +613,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const survey = surveys.find(s => s.id === surveyId);
     if (!survey || survey.completed) return false;
 
-    const reward = survey.rewardCoins;
-
     try {
-      const result = await completeSurveyFn({ surveyId, answers: _answers });
+      // Get verification token from server (required for production security)
+      const tokenResult = await requestSurveyVerificationFn({ surveyId });
+      const verificationToken = tokenResult.data?.success ? tokenResult.data.token : null;
+
+      const result = await completeSurveyFn({
+        surveyId,
+        answers: _answers,
+        verificationToken
+      });
+
       const data = result.data as { success: boolean; reward: number; newBalance: number; newLifetime: number };
 
       if (!data.success) return false;
+
+      const reward = data.reward;
 
       setSurveys(prev => prev.map(s => (s.id === surveyId ? { ...s, completed: true } : s)));
 
@@ -670,16 +689,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const claimScratchCard = async (coins: number): Promise<boolean> => {
+  const claimScratchCard = async (): Promise<{ success: boolean; coins: number }> => {
     const today = getTodayString();
-    localStorage.setItem('paisabhar_last_scratch', today);
-    setScratchCardAvailable(false);
 
     try {
-      const result = await claimScratchCardFn({ coins });
+      const result = await claimScratchCardFn({});
       const data = result.data as { success: boolean; coins: number; newBalance: number; newLifetime: number };
 
-      if (!data.success) return false;
+      if (!data.success) {
+        showToast('Failed to claim scratch card', 0, 'error');
+        return { success: false, coins: 0 };
+      }
+
+      // Server determines the reward
+      const awardedCoins = data.coins;
+
+      localStorage.setItem('paisabhar_last_scratch', today);
+      setScratchCardAvailable(false);
 
       setUser(prev => (prev ? {
         ...prev,
@@ -690,14 +716,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       playCoinSound();
       triggerConfetti();
-      showToast(`Scratch card! +${coins} Coins`, coins, 'success');
+      showToast(`Scratch card! +${awardedCoins} Coins`, awardedCoins, 'success');
 
-      return true;
+      return { success: true, coins: awardedCoins };
     } catch (error: any) {
       console.error('Scratch card error:', error);
       const message = error.message || 'Failed to claim scratch card';
       showToast(message, 0, 'error');
-      return false;
+      return { success: false, coins: 0 };
     }
   };
 
@@ -709,7 +735,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   ): Promise<{ success: boolean; message?: string }> => {
     // Client-side UX check only. The server performs authoritative validation
     // via a Firestore transaction that atomically checks balance and deducts coins.
-    if (!user || user.coinsBalance < coinsSpent) {
+    const currentBalance = user?.coinsBalance ?? 0;
+    if (!user || currentBalance < coinsSpent) {
       return { success: false, message: 'Insufficient coins in balance.' };
     }
 
@@ -805,36 +832,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Check if email is admin email (for pre-log in detection)
-  const isAdminEmail = (email: string): boolean => {
-    return ADMIN_EMAILS.includes(email);
-  };
-
-  const loginAsAdmin = () => {
-    const adminUser: UserProfile = {
-      uid: 'admin_sys_local',
-      email: 'admin@paisabharo.com',
-      displayName: 'System Admin',
-      photoURL: '',
-      coinsBalance: 50000,
-      lifetimeEarnings: 50000,
-      streakDays: 30,
-      lastCheckInDate: getTodayString(),
-      referralCode: 'PB-ADMIN',
-      country: 'IN',
-      currency: 'INR',
-      language: 'en',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      isAdmin: true,
-    };
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('paisabhar_admin_override', 'true');
-    }
-    setUser(adminUser);
-    showToast('Signed in as Administrator (admin@paisabharo.com)', undefined, 'success');
-  };
-
   const loginWithGoogle = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
@@ -846,7 +843,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const logout = async () => {
     try {
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('paisabhar_admin_override');
         localStorage.removeItem('paisabhar_user');
       }
       await signOut(auth);
@@ -929,10 +925,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toast,
         showToast,
         clearToast,
-        isAdminEmail,
-        loginAsAdmin,
-        _pendingAdminEmail: pendingAdminEmail,
-        __setPendingAdminEmail: setPendingAdminEmail,
       }}
     >
       {children}

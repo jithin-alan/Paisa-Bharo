@@ -8,6 +8,10 @@ import { PollPeCoin } from '../components/Illustrations';
 
 export const LeaderboardView: React.FC = () => {
   const { user, selectedLanguage, selectedCurrency } = useApp();
+
+  // Defensive check: user should always exist but handle null gracefully
+  const coinsBalance = user?.coinsBalance ?? 0;
+
   const [filter, setFilter] = useState<'today' | 'alltime'>('today');
 
   const topThree = LEADERBOARD_DATA.slice(0, 3);
@@ -159,11 +163,11 @@ export const LeaderboardView: React.FC = () => {
           <div className="flex items-center justify-end gap-1.5">
             <PollPeCoin className="w-4 h-4" />
             <span className="text-sm font-black text-gray-900">
-              {user.coinsBalance.toLocaleString()} Coins
+              {coinsBalance.toLocaleString()} Coins
             </span>
           </div>
           <div className="text-[10px] text-gray-500">
-            {formatCoinsValue(user.coinsBalance, selectedCurrency)}
+            {formatCoinsValue(coinsBalance, selectedCurrency)}
           </div>
         </div>
       </div>

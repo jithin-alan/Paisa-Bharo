@@ -64,8 +64,8 @@ function timingSafeEqual(a: string, b: string): boolean {
  * Verifies Cint callback signature using HMAC-SHA256
  * Cint provides a secureHash field that should be verified
  */
-async function verifyCintSignature(payload: CintCallbackPayload, apiKey: string): Promise<boolean> {
-  const hash = payload.secureHash;
+export async function verifySignature(payload: any, apiKey: string): Promise<boolean> {
+  const hash = payload.secureHash || payload.signature;
   if (!hash || typeof hash !== 'string') {
     return false;
   }
@@ -185,7 +185,7 @@ export class CintSurveyAdapter {
 
     // SECURITY: Verify signature before processing
     if (this.apiKey && this.apiKey !== 'dummy_cint_api_key_sandbox') {
-      const isValid = await verifyCintSignature(payload, this.apiKey);
+      const isValid = await verifySignature(payload, this.apiKey);
       if (!isValid) {
         console.warn(`[SECURITY] Cint callback signature verification failed for survey ${payload.surveyId}, respondent ${payload.respondentId}`);
         return {

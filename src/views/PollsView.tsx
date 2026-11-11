@@ -19,6 +19,9 @@ export const PollsView: React.FC = () => {
     scratchCardAvailable,
   } = useApp();
 
+  // Defensive check: user should always exist but handle null gracefully
+  const streakDays = user?.streakDays ?? 0;
+
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [showScratchModal, setShowScratchModal] = useState(false);
   const [votingPollId, setVotingPollId] = useState<string | null>(null);
@@ -36,7 +39,7 @@ export const PollsView: React.FC = () => {
     setVotingPollId(null);
   };
 
-  const isCheckedInToday = user.lastCheckInDate === new Date().toISOString().slice(0, 10);
+  const isCheckedInToday = user?.lastCheckInDate === new Date().toISOString().slice(0, 10);
 
   return (
     <div className="space-y-6 pb-12">
@@ -52,7 +55,7 @@ export const PollsView: React.FC = () => {
               <div>
                 <div className="flex items-center gap-1.5">
                   <h3 className="font-black text-base text-gray-900">
-                    {user.streakDays} Day Streak!
+                    {streakDays} Day Streak!
                   </h3>
                   <span className="text-[11px] bg-[#f0ebfc] text-[#7848f4] px-2.5 py-0.5 rounded-full font-bold">
                     🔥 Active
@@ -81,8 +84,8 @@ export const PollsView: React.FC = () => {
           {/* 7-Day Dots in PollPe Palette */}
           <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between gap-1 text-center">
             {[1, 2, 3, 4, 5, 6, 7].map((day) => {
-              const completed = day <= user.streakDays;
-              const isToday = day === user.streakDays;
+              const completed = day <= streakDays;
+              const isToday = day === streakDays;
               return (
                 <div key={day} className="flex-1 flex flex-col items-center">
                   <span className="text-[10px] text-gray-400 mb-1 font-semibold">D{day}</span>

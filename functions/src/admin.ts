@@ -16,14 +16,13 @@ interface AwardCoinsResult {
 
 export const awardCoins = functions.https.onCall(async (request, response): Promise<AwardCoinsResult> => {
   const context = request.auth;
-  // Verify admin
+  // Verify admin via custom claims
   if (!context) {
     throw new functions.https.HttpsError("unauthenticated", "Must be logged in");
   }
 
-  const adminRef = db.collection("admins").doc(context.uid);
-  const adminDoc = await adminRef.get();
-  if (!adminDoc.exists) {
+  // Check custom claim for admin access
+  if (context.token.admin !== true) {
     throw new functions.https.HttpsError("permission-denied", "Admin access required");
   }
 

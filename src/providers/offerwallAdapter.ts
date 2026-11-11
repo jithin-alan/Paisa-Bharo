@@ -70,27 +70,9 @@ function timingSafeEqual(a: string, b: string): boolean {
 }
 
 /**
- * Verifies AdGem postback signature using HMAC-SHA256
- */
-async function verifyAdGemSignature(payload: Record<string, any>, secret: string): Promise<boolean> {
-  const signature = payload.signature || payload.sig || payload.hash;
-  if (!signature || typeof signature !== 'string') {
-    return false;
-  }
-
-  const fields = ['player_id', 'amount', 'transaction_id', 'verifier', 'tx_id', 'user_id', 'coins', 'reward']
-    .filter(f => payload[f] !== undefined)
-    .map(f => `${f}=${payload[f]}`)
-    .join('&');
-
-  const expectedSignature = await hmacSha256(secret, fields);
-  return timingSafeEqual(signature, expectedSignature);
-}
-
-/**
  * Verifies BitLabs postback signature
  */
-async function verifyBitLabsSignature(payload: Record<string, any>, secret: string): Promise<boolean> {
+export async function verifyBitLabsSignature(payload: Record<string, any>, secret: string): Promise<boolean> {
   const hash = payload.hash || payload.signature || payload.sig;
   if (!hash || typeof hash !== 'string') {
     return false;
@@ -104,6 +86,24 @@ async function verifyBitLabsSignature(payload: Record<string, any>, secret: stri
 
   const expectedHash = await hmacSha256(secret, dataToHash);
   return timingSafeEqual(hash.toLowerCase(), expectedHash.toLowerCase());
+}
+
+/**
+ * Verifies AdGem postback signature
+ */
+export async function verifyAdGemSignature(payload: Record<string, any>, secret: string): Promise<boolean> {
+  const signature = payload.signature || payload.sig || payload.hash;
+  if (!signature || typeof signature !== 'string') {
+    return false;
+  }
+
+  const fields = ['player_id', 'amount', 'transaction_id', 'verifier', 'tx_id', 'user_id', 'coins', 'reward']
+    .filter(f => payload[f] !== undefined)
+    .map(f => `${f}=${payload[f]}`)
+    .join('&');
+
+  const expectedSignature = await hmacSha256(secret, fields);
+  return timingSafeEqual(signature, expectedSignature);
 }
 
 /**

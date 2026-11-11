@@ -4,5 +4,8 @@ export declare const applyReferralCode: functions.https.CallableFunction<any, Pr
     message: string;
     newBalance: any;
     newLifetime: any;
+    fraudScore: number;
+    status: string;
+    qualifyingRequired: boolean;
 }>, unknown>;
 //# sourceMappingURL=referral.d.ts.map

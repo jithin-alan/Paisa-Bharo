@@ -20,6 +20,9 @@ export const SettingsView: React.FC = () => {
     toggleSound,
   } = useApp();
 
+  // Defensive check: user should always exist but handle null gracefully
+  const coinsBalance = user?.coinsBalance ?? 0;
+
   return (
     <div className="space-y-6 pb-12 text-gray-900">
       {/* User Profile Card in PollPe Clean Theme */}
@@ -45,10 +48,10 @@ export const SettingsView: React.FC = () => {
             <div className="flex items-center gap-2 mt-2">
               <PollPeCoin className="w-4 h-4" />
               <span className="text-xs font-black text-gray-900">
-                {user.coinsBalance.toLocaleString()} Coins
+                {coinsBalance.toLocaleString()} Coins
               </span>
               <span className="text-[11px] text-gray-500">
-                ({formatCoinsValue(user.coinsBalance, selectedCurrency)})
+                ({formatCoinsValue(coinsBalance, selectedCurrency)})
               </span>
             </div>
           </div>

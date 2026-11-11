@@ -28,10 +28,7 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && (
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
-        (request.auth.token.email != null && (request.auth.token.email == 'admin@paisabharo.com' || request.auth.token.email == 'stickadmob@gmail.com'))
-      );
+      return isSignedIn() && request.auth.token.admin == true;
     }
 
     // Helper for validating User document
@@ -40,13 +37,19 @@ service cloud.firestore {
              (!('email' in data) || (data.email is string && data.email.size() <= 128)) &&
              (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100)) &&
              (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500)) &&
-             (!('coinsBalance' in data) || (data.coinsBalance is int && data.coinsBalance >= 0)) &&
              (!('referralCode' in data) || (data.referralCode is string && data.referralCode.size() <= 32)) &&
              data.country is string && data.country.size() <= 8 &&
              data.currency is string && data.currency.size() <= 8 &&
              data.language is string && data.language.size() <= 8 &&
              // CRITICAL SECURITY: Prevent users from setting admin fields
-             !data.keys().hasAny(['isAdmin', 'role', 'isSuperadmin', 'permissions']);
+             !data.keys().hasAny(['isAdmin', 'role', 'isSuperadmin', 'permissions']) &&
+             // CRITICAL SECURITY: Prevent client modification of server-managed fields
+             !data.keys().hasAny(['accountAge', 'fraudScore', 'suspicionFlags']);
+    }
+
+    // Wallet fields that must NEVER be set by clients — only initialized/trusted server-side
+    function hasWalletFields(data) {
+      return data.keys().hasAny(['coinsBalance', 'lifetimeEarnings', 'streakDays', 'lastCheckInDate']);
     }
 
     // Users Collection
@@ -56,16 +59,18 @@ service cloud.firestore {
       allow create: if isOwner(userId) &&
                        isValidId(userId) &&
                        incoming().uid == request.auth.uid &&
-                       isValidUser(incoming());
-      allow update: if (isOwner(userId) &&
+                       isValidUser(incoming()) &&
+                       !hasWalletFields(incoming());
+      allow update: if isOwner(userId) &&
                        isValidId(userId) &&
                        incoming().uid == existing().uid &&
                        isValidUser(incoming()) &&
+                       !hasWalletFields(incoming()) &&
                        incoming().diff(existing()).affectedKeys().hasOnly([
-                         'displayName', 'photoURL', 'coinsBalance', 'lifetimeEarnings',
-                         'streakDays', 'lastCheckInDate', 'country', 'currency',
+                         'displayName', 'photoURL',
+                         'country', 'currency',
                          'language', 'referredBy', 'updatedAt'
-                       ])) || isAdmin();
+                       ]) || isAdmin();
       allow delete: if isAdmin();
     }
 
@@ -133,9 +138,7 @@ service cloud.firestore {
     match /redemptions/{redemptionId} {
       allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
-      allow create: if isSignedIn() &&
-                       isValidId(redemptionId) &&
-                       isValidRedemption(incoming());
+      allow create: if false; // All redemption requests must go through the callable function
       allow update, delete: if isAdmin();
     }
 
@@ -155,6 +158,35 @@ service cloud.firestore {
     match /test/{docId} {
       allow get: if true;
       allow write: if false;
+    }
+
+    // Referral Rewards Collection - tracks one-time referral rewards
+    // This is write-protected - only server/cloud functions can create records
+    function isValidReferralReward(data) {
+      return data.rewardId is string && data.rewardId.size() <= 128 &&
+             data.userId is string && data.userId.size() > 0 &&
+             data.referrerId is string && data.referrerId.size() > 0 &&
+             data.referralCode is string && data.referralCode.size() >= 5 &&
+             data.amount is int && data.amount > 0 && data.amount <= 10000 &&
+             data.type in ['bonus', 'referral_reward'] &&
+             data.status in ['pending', 'completed', 'revoked'] &&
+             (!('createdAt' in data) || data.createdAt is timestamp) &&
+             (!('completedAt' in data) || data.completedAt is timestamp || data.completedAt == null) &&
+             (!('revokedAt' in data) || data.revokedAt is timestamp || data.revokedAt == null) &&
+             (!('expiresAt' in data) || data.expiresAt is timestamp || data.expiresAt == null) &&
+             data.transactionId is string && data.transactionId.size() <= 128;
+    }
+
+    match /referral_rewards/{rewardId} {
+      allow read: if isSignedIn() && (
+                     resource.data.userId == request.auth.uid ||
+                     isAdmin() ||
+                     // Referrers can read rewards related to their referrals
+                     (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                      resource.data.referrerId == request.auth.uid)
+                   );
+      allow create: if false; // Only server-side writes via cloud functions
+      allow update, delete: if isAdmin();
     }
   }
 }

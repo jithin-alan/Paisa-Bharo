@@ -2,12 +2,12 @@ import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { db, getUserRef } from "./helpers";
 export const requestRedemption = functions.https.onCall(async (request, response) => {
-    const context = request.auth;
-    if (!context) {
+    const auth = request.auth;
+    if (!auth) {
         throw new functions.https.HttpsError("unauthenticated", "Must be logged in");
     }
     const { payoutMethod, amountCurrency, coinsSpent, accountDetails, currency } = request.data;
-    const userId = context.uid;
+    const userId = auth.uid;
     if (!payoutMethod || !coinsSpent || !accountDetails || !currency) {
         throw new functions.https.HttpsError("invalid-argument", "Missing required fields");
     }

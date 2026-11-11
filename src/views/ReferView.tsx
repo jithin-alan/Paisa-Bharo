@@ -10,10 +10,13 @@ export const ReferView: React.FC = () => {
   const [inviteInput, setInviteInput] = useState('');
   const [statusMsg, setStatusMsg] = useState<{ text: string; success: boolean } | null>(null);
 
-  const referralUrl = typeof window !== 'undefined' ? `${window.location.origin}?ref=${user.referralCode}` : `https://paisabharopwa.com?ref=${user.referralCode}`;
+  // Defensive check: user should always exist but handle null gracefully
+  const referralCode = user?.referralCode ?? '';
+
+  const referralUrl = typeof window !== 'undefined' ? `${window.location.origin}?ref=${referralCode}` : `https://paisabharopwa.com?ref=${referralCode}`;
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(user.referralCode);
+    navigator.clipboard.writeText(referralCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -23,7 +26,7 @@ export const ReferView: React.FC = () => {
       try {
         await navigator.share({
           title: 'Join me on Paisa Bharo!',
-          text: `Answer quick 5-second polls and get instant real payouts! Use my invite code: ${user.referralCode} for +100 Coins bonus!`,
+          text: `Answer quick 5-second polls and get instant real payouts! Use my invite code: ${referralCode} for +100 Coins bonus!`,
           url: referralUrl,
         });
       } catch {
@@ -73,7 +76,7 @@ export const ReferView: React.FC = () => {
               {getTranslation(selectedLanguage, 'yourReferralCode')}
             </span>
             <span className="text-lg font-black tracking-widest text-[#7848f4]">
-              {user.referralCode}
+              {referralCode}
             </span>
           </div>
           <button
@@ -96,7 +99,7 @@ export const ReferView: React.FC = () => {
           </button>
 
           <a
-            href={`https://wa.me/?text=${encodeURIComponent(`Hey! I am making real money answering quick 5-second polls on Paisa Bharo PWA! Use my code ${user.referralCode} to get 100 free coins: ${referralUrl}`)}`}
+            href={`https://wa.me/?text=${encodeURIComponent(`Hey! I am making real money answering quick 5-second polls on Paisa Bharo PWA! Use my code ${referralCode} to get 100 free coins: ${referralUrl}`)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="px-5 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-extrabold text-xs flex items-center gap-2 transition cursor-pointer shadow-md"
@@ -119,7 +122,7 @@ export const ReferView: React.FC = () => {
           Enter an invite code from a friend to receive an instant +100 Coins welcome boost!
         </p>
 
-        {user.referredBy ? (
+        {user?.referredBy ? (
           <div className="p-3.5 rounded-xl bg-[#f0ebfc] text-xs text-[#7848f4] font-semibold flex items-center gap-2">
             <Check className="w-4 h-4 shrink-0 text-[#7848f4]" />
             <span>You joined with referral code: <strong>{user.referredBy}</strong> (+100 Coins awarded).</span>

@@ -715,7 +715,7 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
             <Users className="w-5 h-5 text-[#7848f4]" />
             <div className="text-left">
               <h3 className="text-sm sm:text-base font-black text-gray-900">
-                Registered Users in Database ({allUsers.length || adminStats.totalUsers})
+                Registered Users in Database ({allUsers.length})
               </h3>
               <p className="text-xs text-gray-500">Live profiles stored in Firestore `users` collection</p>
             </div>
@@ -727,14 +727,25 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
           <div className="px-6 pb-6 pt-2">
             <div className="flex justify-between items-center mb-3">
               <p className="text-xs text-gray-500">Live query of user balances, country, and streak records.</p>
-              <button
-                type="button"
-                onClick={handleExportUsers}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-50"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Export JSON</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleManualRefresh}
+                  disabled={isRefreshing}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  <span>{isRefreshing ? 'Refreshing…' : 'Refresh'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportUsers}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-50"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Export JSON</span>
+                </button>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -765,7 +776,7 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
                   ) : (
                     <tr>
                       <td colSpan={5} className="py-4 text-center text-gray-400 italic">
-                        Click "Refresh" above to load the live user records from Firestore.
+                        No user records found. New registrations will appear here automatically.
                       </td>
                     </tr>
                   )}

@@ -12,9 +12,9 @@ export function getUserRef(userId: string) {
 }
 
 /**
- * Helper to check if user is admin
+ * Helper to check if user is admin via custom claims
+ * @param context - The auth context (request.auth from callable functions)
  */
-export async function isAdminUser(userId: string): Promise<boolean> {
-  const adminDoc = await db.collection("admins").doc(userId).get();
-  return adminDoc.exists;
+export function isAdminUser(context: { token: any } | null | undefined): boolean {
+  return context?.token?.admin === true;
 }

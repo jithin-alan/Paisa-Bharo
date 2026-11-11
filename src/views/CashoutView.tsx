@@ -8,6 +8,10 @@ import { WalletIllustration, PollPeCoin } from '../components/Illustrations';
 
 export const CashoutView: React.FC = () => {
   const { user, selectedCurrency, setCurrency, selectedLanguage, redemptions, requestRedemption } = useApp();
+
+  // Defensive check: user should always exist but handle null gracefully
+  const coinsBalance = user?.coinsBalance ?? 0;
+
   const [selectedMethod, setSelectedMethod] = useState<PayoutMethod | null>(null);
   const [selectedDenom, setSelectedDenom] = useState<{ coins: number; amount: number } | null>(null);
   const [accountInput, setAccountInput] = useState('');
@@ -33,7 +37,7 @@ export const CashoutView: React.FC = () => {
       return;
     }
 
-    if (user.coinsBalance < selectedDenom.coins) {
+    if (coinsBalance < selectedDenom.coins) {
       setMessage({ text: `Insufficient coins. You need ${selectedDenom.coins} Coins for this payout.`, type: 'error' });
       return;
     }
@@ -70,11 +74,11 @@ export const CashoutView: React.FC = () => {
             <div className="flex items-center gap-2 mt-0.5">
               <PollPeCoin className="w-6 h-6 shrink-0" />
               <span className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
-                {user.coinsBalance.toLocaleString()}
+                {coinsBalance.toLocaleString()}
               </span>
             </div>
             <div className="text-xs text-gray-600 mt-1 flex items-center gap-1.5 font-medium">
-              <span>≈ {formatCoinsValue(user.coinsBalance, selectedCurrency)} Real Value</span>
+              <span>≈ {formatCoinsValue(coinsBalance, selectedCurrency)} Real Value</span>
               <span className="text-[#7848f4] font-black">({selectedCurrency})</span>
             </div>
           </div>
@@ -147,7 +151,7 @@ export const CashoutView: React.FC = () => {
           {/* Methods Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {currencyConfig.payoutMethods.map((method) => {
-              const canAffordMin = user.coinsBalance >= method.minCoins;
+              const canAffordMin = coinsBalance >= method.minCoins;
 
               return (
                 <div
@@ -291,7 +295,7 @@ export const CashoutView: React.FC = () => {
               <div className="grid grid-cols-2 gap-2">
                 {selectedMethod.denominations.map((denom, idx) => {
                   const isChosen = selectedDenom?.coins === denom.coins;
-                  const affordable = user.coinsBalance >= denom.coins;
+                  const affordable = coinsBalance >= denom.coins;
 
                   return (
                     <button
@@ -354,9 +358,9 @@ export const CashoutView: React.FC = () => {
 
               <button
                 type="submit"
-                disabled={isSubmitting || !selectedDenom || user.coinsBalance < (selectedDenom?.coins || 0)}
+                disabled={isSubmitting || !selectedDenom || coinsBalance < (selectedDenom?.coins || 0)}
                 className={`w-full py-3.5 rounded-xl font-black text-xs transition shadow-lg cursor-pointer flex items-center justify-center gap-2 ${
-                  user.coinsBalance >= (selectedDenom?.coins || 0) && !isSubmitting
+                  coinsBalance >= (selectedDenom?.coins || 0) && !isSubmitting
                     ? 'bg-[#7848f4] hover:bg-[#6837e3] text-white shadow-[0_4px_14px_rgba(120,72,244,0.35)] active:scale-95'
                     : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 }`}

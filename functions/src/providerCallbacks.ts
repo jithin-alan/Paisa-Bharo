@@ -1,86 +1,341 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+import { createHmac, timingSafeEqual } from "crypto";
 import { db, getUserRef } from "./helpers";
 
 /**
- * Provider callback processor that:
- * 1. Records every provider transaction in Firestore for duplicate prevention
- * 2. Credits the wallet atomically in the same Firestore transaction
- * 3. Works across multiple server instances (not in-memory)
+ * Provider callback handling.
+ *
+ * Flow for every S2S postback:
+ *   1. POST only. Provider is taken from the URL path, never from the body.
+ *   2. Signature is verified with a provider-specific rule. Missing secret = reject.
+ *   3. Payload fields are validated and coin amounts are range-checked. No defaults.
+ *   4. The credit is written in one Firestore transaction keyed by provider + transaction id,
+ *      so a retried callback can never credit twice.
  */
 
-interface ProviderCallbackInput {
-  provider: 'adgem' | 'bitlabs' | 'cint' | 'affiliate';
+export type ProviderName = "cint" | "adgem" | "bitlabs" | "affiliate";
+const PROVIDERS: readonly ProviderName[] = ["cint", "adgem", "bitlabs", "affiliate"];
+
+// Secrets come from the function's environment. Never hardcode or default these.
+const SECRET_ENV: Record<ProviderName, string> = {
+  cint: "CINT_API_KEY",
+  adgem: "ADGEM_SECRET",
+  bitlabs: "BITLABS_SECRET",
+  affiliate: "AFFILIATE_SECRET",
+};
+
+// Used only when a provider reports money instead of coins.
+const COIN_MULTIPLIER: Record<ProviderName, number> = {
+  cint: 1000,
+  adgem: 500,
+  bitlabs: 500,
+  affiliate: 500,
+};
+
+const MAX_COINS = 10000;
+const CINT_STATUSES = ["complete", "terminate", "screenout", "quotafull", "reversed"];
+const AFFILIATE_NETWORKS = ["Awin", "CJ", "Impact"];
+
+export interface ProviderCallbackInput {
+  provider: ProviderName;
   transactionId: string;
   userId: string;
   coinsAwarded: number;
   reason: string;
-  metadata?: Record<string, any>;
+  metadata: Record<string, string | number>;
 }
 
-interface ProviderCallbackResult {
+export interface ProviderCallbackResult {
   success: boolean;
-  status: 'credited' | 'duplicate' | 'invalid_signature' | 'error';
+  status: "credited" | "duplicate" | "ignored" | "invalid_signature" | "invalid_payload" | "user_not_found" | "error";
   message: string;
-  transactionId: string;
-  userId: string;
-  coinsAwarded: number;
+  transactionId?: string;
+  userId?: string;
+  coinsAwarded?: number;
   newBalance?: number;
 }
 
+// ---------------------------------------------------------------------------
+// Small validators
+// ---------------------------------------------------------------------------
+
+function isProvider(value: unknown): value is ProviderName {
+  return typeof value === "string" && (PROVIDERS as readonly string[]).includes(value);
+}
+
+/** Non-empty trimmed string (or finite number rendered as string), max 200 chars. */
+function str(value: unknown): string | null {
+  if (typeof value === "string") {
+    const t = value.trim();
+    return t.length > 0 && t.length <= 200 ? t : null;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return null;
+}
+
+/** Finite number from a number or numeric string. */
+function num(value: unknown): number | null {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "string" && value.trim() !== "") {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+function isValidUserId(id: string): boolean {
+  return id.length >= 3 && id !== "guest_user";
+}
+
+function isValidTransactionId(id: string): boolean {
+  return id.length >= 3;
+}
+
 /**
- * Processes a provider callback with atomic Firestore wallet transaction.
- * Uses Firestore transaction to prevent duplicate processing across instances.
+ * Coins from an explicit coin amount, or converted from a currency amount.
+ * Returns null if the result is missing, non-integer, or outside 1..MAX_COINS.
  */
-export async function processProviderCallback(
-  input: ProviderCallbackInput
-): Promise<ProviderCallbackResult> {
-  const { provider, transactionId, userId, coinsAwarded, reason, metadata = {} } = input;
-
-  if (!userId) {
-    return {
-      success: false,
-      status: 'invalid_signature' as const,
-      message: `Missing userId in ${provider} callback.`,
-      transactionId,
-      userId: '',
-      coinsAwarded: 0,
-    };
+function resolveCoins(provider: ProviderName, coinsRaw: unknown, usdRaw: unknown): number | null {
+  let coins = num(coinsRaw);
+  if (coins === null) {
+    const usd = num(usdRaw);
+    if (usd === null) return null;
+    coins = Math.round(usd * COIN_MULTIPLIER[provider]);
   }
+  if (!Number.isInteger(coins) || coins < 1 || coins > MAX_COINS) return null;
+  return coins;
+}
 
-  if (coinsAwarded <= 0) {
-    return {
-      success: false,
-      status: 'invalid_signature' as const,
-      message: `Invalid coinsAwarded value (${coinsAwarded}) in ${provider} callback.`,
-      transactionId,
-      userId,
-      coinsAwarded: 0,
-    };
+// ---------------------------------------------------------------------------
+// Signature verification (provider-specific, fail-closed)
+// ---------------------------------------------------------------------------
+
+function hmacHex(secret: string, data: string): string {
+  return createHmac("sha256", secret).update(data, "utf8").digest("hex");
+}
+
+function safeEqualHex(received: string, expected: string): boolean {
+  const a = Buffer.from(received.trim().toLowerCase(), "utf8");
+  const b = Buffer.from(expected.toLowerCase(), "utf8");
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+type Verifier = (payload: Record<string, unknown>, secret: string) => boolean;
+
+/*
+ * The signed-field rules below follow the field lists in the original code.
+ * Each one must be checked against that provider's current documentation before going live.
+ */
+const VERIFIERS: Record<ProviderName, Verifier> = {
+  // Cint: HMAC-SHA256 over timestamp|respondentId|surveyId|status|subId, sent as secureHash
+  cint: (p, secret) => {
+    const received = str(p.secureHash);
+    if (!received) return false;
+    const signed = [p.timestamp, p.respondentId, p.surveyId, p.status, p.subId ?? ""]
+      .map(v => String(v ?? ""))
+      .join("|");
+    return safeEqualHex(received, hmacHex(secret, signed));
+  },
+
+  // AdGem: HMAC-SHA256 over the present fields as key=value joined by &, sent as signature
+  adgem: (p, secret) => {
+    const received = str(p.signature);
+    if (!received) return false;
+    const signed = ["player_id", "amount", "transaction_id", "verifier", "tx_id", "user_id", "coins", "reward"]
+      .filter(k => p[k] !== undefined)
+      .map(k => `${k}=${String(p[k])}`)
+      .join("&");
+    return safeEqualHex(received, hmacHex(secret, signed));
+  },
+
+  // BitLabs: HMAC-SHA256 over uid+val+tx, sent as hash
+  bitlabs: (p, secret) => {
+    const received = str(p.hash);
+    if (!received) return false;
+    const signed = [p.uid, p.val, p.tx].map(v => String(v ?? "")).join("");
+    return safeEqualHex(received, hmacHex(secret, signed));
+  },
+
+  // Affiliate networks: HMAC-SHA256 over alphabetically sorted key+value pairs, sent as signature
+  affiliate: (p, secret) => {
+    const received = str(p.signature);
+    if (!received) return false;
+    const signed = Object.keys(p)
+      .filter(k => k !== "signature")
+      .sort()
+      .map(k => `${k}=${String(p[k] ?? "")}`)
+      .join("");
+    return safeEqualHex(received, hmacHex(secret, signed));
+  },
+};
+
+export function verifyProviderSignature(provider: ProviderName, payload: Record<string, unknown>): boolean {
+  const secret = process.env[SECRET_ENV[provider]];
+  if (!secret) {
+    console.error(`[SECURITY] ${SECRET_ENV[provider]} is not set; rejecting ${provider} callback`);
+    return false;
   }
-
-  // Use a single Firestore transaction to atomically:
-  // 1. Check for duplicate transaction
-  // 2. Record the transaction
-  // 3. Credit the wallet
   try {
-    const result = await db.runTransaction(async (transaction) => {
-      const txRef = db.collection("provider_transactions").doc(`${provider}_${transactionId}`);
-      const txDoc = await transaction.get(txRef);
+    return VERIFIERS[provider](payload, secret);
+  } catch (err) {
+    console.error(`[SECURITY] ${provider} signature check threw; rejecting`, err);
+    return false;
+  }
+}
 
-      if (txDoc.exists) {
-        const existing = txDoc.data()!;
+// ---------------------------------------------------------------------------
+// Payload parsing (provider-specific field validation, no defaults)
+// ---------------------------------------------------------------------------
+
+type ParseOutcome =
+  | { kind: "ok"; input: ProviderCallbackInput }
+  | { kind: "ignored"; reason: string }
+  | { kind: "invalid"; error: string };
+
+function parseCallback(provider: ProviderName, p: Record<string, unknown>): ParseOutcome {
+  const invalid = (error: string): ParseOutcome => ({ kind: "invalid", error });
+
+  switch (provider) {
+    case "cint": {
+      const respondentId = str(p.respondentId);
+      const surveyId = str(p.surveyId);
+      const status = str(p.status);
+      const timestamp = str(p.timestamp);
+      if (!respondentId || !surveyId || !status || !timestamp) {
+        return invalid("Missing required field: respondentId, surveyId, status or timestamp");
+      }
+      if (!CINT_STATUSES.includes(status)) return invalid(`Unknown status: ${status}`);
+      if (status !== "complete") {
+        return { kind: "ignored", reason: `Cint status "${status}" does not credit coins` };
+      }
+      const coins = resolveCoins("cint", p.coinsAwarded, p.rewardUsd);
+      if (coins === null) return invalid("Invalid or missing reward: provide coinsAwarded or rewardUsd");
+      return {
+        kind: "ok",
+        input: {
+          provider,
+          transactionId: `${surveyId}_${respondentId}`,
+          userId: respondentId,
+          coinsAwarded: coins,
+          reason: "Cint survey complete",
+          metadata: { surveyId, timestamp },
+        },
+      };
+    }
+
+    case "adgem": {
+      const transactionId = str(p.transaction_id);
+      const userId = str(p.user_id);
+      if (!transactionId || !userId) return invalid("Missing required field: transaction_id or user_id");
+      const coins = resolveCoins("adgem", p.amount, undefined);
+      if (coins === null) return invalid("Invalid amount: must be an integer from 1 to 10000");
+      return {
+        kind: "ok",
+        input: {
+          provider,
+          transactionId,
+          userId,
+          coinsAwarded: coins,
+          reason: "AdGem offerwall postback",
+          metadata: { providerTxId: str(p.tx_id) ?? "" },
+        },
+      };
+    }
+
+    case "bitlabs": {
+      const tx = str(p.tx);
+      const uid = str(p.uid);
+      if (!tx || !uid) return invalid("Missing required field: tx or uid");
+      const coins = resolveCoins("bitlabs", p.val, undefined);
+      if (coins === null) return invalid("Invalid val: must be an integer from 1 to 10000");
+      return {
+        kind: "ok",
+        input: {
+          provider,
+          transactionId: tx,
+          userId: uid,
+          coinsAwarded: coins,
+          reason: "BitLabs offerwall postback",
+          metadata: { p1: str(p.p1) ?? "", subId: str(p.subId) ?? "" },
+        },
+      };
+    }
+
+    case "affiliate": {
+      const network = str(p.network);
+      const orderId = str(p.orderId);
+      const userId = str(p.userId);
+      const status = str(p.status);
+      if (!network || !orderId || !userId || !status) {
+        return invalid("Missing required field: network, orderId, userId or status");
+      }
+      if (!AFFILIATE_NETWORKS.includes(network)) return invalid(`Unknown network: ${network}`);
+      if (status !== "approved") {
+        return { kind: "ignored", reason: `Affiliate status "${status}" does not credit coins yet` };
+      }
+      const coins = resolveCoins("affiliate", p.coinsAwarded, p.commissionUsd);
+      if (coins === null) return invalid("Invalid or missing reward: provide coinsAwarded or commissionUsd");
+      return {
+        kind: "ok",
+        input: {
+          provider,
+          transactionId: `${network}_${orderId}`,
+          userId,
+          coinsAwarded: coins,
+          reason: `Affiliate conversion via ${network}`,
+          metadata: {
+            network,
+            orderId,
+            clickId: str(p.clickId) ?? "",
+            merchantName: str(p.merchantName) ?? "",
+          },
+        },
+      };
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Wallet credit (single Firestore transaction)
+// ---------------------------------------------------------------------------
+
+async function executeCallback(input: ProviderCallbackInput): Promise<ProviderCallbackResult> {
+  const { provider, transactionId, userId, coinsAwarded, reason, metadata } = input;
+
+  const userRef = getUserRef(userId);
+  const txRef = db.collection("provider_transactions").doc(`${provider}_${transactionId}`);
+
+  try {
+    return await db.runTransaction<ProviderCallbackResult>(async (transaction) => {
+      const existingTx = await transaction.get(txRef);
+      if (existingTx.exists) {
         return {
-          success: false,
-          status: 'duplicate' as const,
-          message: `Transaction ${transactionId} from ${provider} has already been credited.`,
+          success: true,
+          status: "duplicate",
+          message: `Transaction ${transactionId} from ${provider} was already credited.`,
           transactionId,
           userId,
           coinsAwarded: 0,
         };
       }
 
-      // Record the transaction first (before crediting wallet)
+      const userDoc = await transaction.get(userRef);
+      if (!userDoc.exists) {
+        return {
+          success: false,
+          status: "user_not_found",
+          message: `User ${userId} not found.`,
+          transactionId,
+          userId,
+          coinsAwarded: 0,
+        };
+      }
+
+      const userData = userDoc.data()!;
+      const currentBalance = userData.coinsBalance || 0;
+      const newBalance = currentBalance + coinsAwarded;
+
       transaction.set(txRef, {
         provider,
         transactionId,
@@ -88,36 +343,43 @@ export async function processProviderCallback(
         coinsAwarded,
         reason,
         metadata,
+        processedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      transaction.update(userRef, {
+        coinsBalance: newBalance,
+        lifetimeEarnings: (userData.lifetimeEarnings || 0) + coinsAwarded,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      transaction.set(db.collection("user_transactions").doc(), {
+        userId,
+        type: "credit",
+        amount: coinsAwarded,
+        reason,
+        balanceBefore: currentBalance,
+        balanceAfter: newBalance,
+        metadata: { provider, providerTransactionId: transactionId, ...metadata },
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // Credit the wallet atomically
-      const walletResult = await updateUserCoinsInTransaction(
-        userId,
-        coinsAwarded,
-        reason,
-        metadata,
-        transaction
-      );
-
       return {
         success: true,
-        status: 'credited' as const,
-        message: `${provider} callback processed. +${coinsAwarded} coins credited to user ${userId}.`,
+        status: "credited",
+        message: `${provider} callback processed. +${coinsAwarded} coins credited.`,
         transactionId,
         userId,
         coinsAwarded,
-        newBalance: walletResult.newBalance,
+        newBalance,
       };
     });
-
-    return result;
   } catch (error: any) {
-    console.error(`[ProviderCallback] Error processing ${provider} callback:`, error);
+    // Thrown errors (contention, Firestore outage) roll back the whole transaction.
+    console.error(`[ProviderCallback] ${provider} transaction failed:`, error);
     return {
       success: false,
-      status: 'error' as const,
-      message: error.message || `Failed to process ${provider} callback.`,
+      status: "error",
+      message: "Failed to process callback.",
       transactionId,
       userId,
       coinsAwarded: 0,
@@ -125,57 +387,104 @@ export async function processProviderCallback(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Cloud Functions
+// ---------------------------------------------------------------------------
+
 /**
- * Atomically updates user coins within an existing Firestore transaction.
- * This ensures the wallet update and transaction record are atomic.
+ * Provider S2S postback endpoint.
+ * Deploy URL: .../providerPostback/<provider>   (cint | adgem | bitlabs | affiliate)
+ * POST only. Anything else gets 405 and no processing.
  */
-async function updateUserCoinsInTransaction(
-  userId: string,
-  coinDelta: number,
-  reason: string,
-  metadata: Record<string, any>,
-  transaction: admin.firestore.Transaction
-): Promise<{ newBalance: number; newLifetime: number }> {
-  const userRef = getUserRef(userId);
-  const userDoc = await transaction.get(userRef);
-
-  if (!userDoc.exists) {
-    throw new functions.https.HttpsError("not-found", `User ${userId} not found`);
+export const providerPostback = functions.https.onRequest(async (req, res) => {
+  if (req.method !== "POST") {
+    res.set("Allow", "POST");
+    res.status(405).json({ success: false, error: "Method not allowed" });
+    return;
   }
 
-  const userData = userDoc.data()!;
-  const currentBalance = userData.coinsBalance || 0;
-  const currentLifetime = userData.lifetimeEarnings || 0;
-
-  const newBalance = Math.max(0, currentBalance + coinDelta);
-  const newLifetime = coinDelta > 0 ? currentLifetime + coinDelta : currentLifetime;
-
-  // Validate the change is reasonable
-  if (coinDelta > 10000) {
-    throw new functions.https.HttpsError(
-      "invalid-argument",
-      `Coin delta (${coinDelta}) exceeds maximum allowed`
-    );
+  // Provider comes from the URL only, so the body cannot choose which rules apply.
+  const segment = (req.path.split("/").filter(Boolean).pop() || "").toLowerCase();
+  if (!isProvider(segment)) {
+    res.status(404).json({ success: false, error: "Unknown provider" });
+    return;
   }
 
-  transaction.update(userRef, {
-    coinsBalance: newBalance,
-    lifetimeEarnings: newLifetime,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
+  const body = req.body;
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    res.status(400).json({ success: false, status: "invalid_payload", error: "Invalid payload" });
+    return;
+  }
+  const payload: Record<string, unknown> = { ...req.query, ...body };
 
-  // Create transaction record
-  const txRef = db.collection("user_transactions").doc();
-  transaction.set(txRef, {
+  if (!verifyProviderSignature(segment, payload)) {
+    console.warn(`[SECURITY] Rejected ${segment} callback: signature check failed`);
+    res.status(403).json({ success: false, status: "invalid_signature", error: "Invalid signature" });
+    return;
+  }
+
+  const parsed = parseCallback(segment, payload);
+  if (parsed.kind === "invalid") {
+    res.status(400).json({ success: false, status: "invalid_payload", error: parsed.error });
+    return;
+  }
+  if (parsed.kind === "ignored") {
+    // 200 so the provider stops retrying a status we deliberately do not credit.
+    res.status(200).json({ success: true, status: "ignored", message: parsed.reason });
+    return;
+  }
+
+  const { input } = parsed;
+  if (!isValidUserId(input.userId) || !isValidTransactionId(input.transactionId)) {
+    res.status(400).json({ success: false, status: "invalid_payload", error: "Invalid user or transaction id" });
+    return;
+  }
+
+  try {
+    const result = await executeCallback(input);
+    const code = result.status === "error" ? 500 : result.status === "user_not_found" ? 404 : 200;
+    res.status(code).json(result);
+  } catch (error) {
+    console.error(`[ProviderPostback] Unhandled error for ${segment}:`, error);
+    res.status(500).json({ success: false, status: "error", error: "Internal error" });
+  }
+});
+
+/**
+ * Admin-only manual credit. Provider traffic must not use this; it goes through providerPostback.
+ */
+export const processProviderCallback = functions.https.onCall(async (request, response) => {
+  const auth = request.auth;
+  if (!auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Sign in required");
+  }
+  if (auth.token.admin !== true) {
+    throw new functions.https.HttpsError("permission-denied", "Admin only");
+  }
+
+  const payload = request.data && typeof request.data === "object" ? (request.data as Record<string, unknown>) : {};
+  const provider = payload.provider;
+  const transactionId = str(payload.transactionId);
+  const userId = str(payload.userId);
+  const coinsAwarded = num(payload.coinsAwarded);
+  const reason = str(payload.reason);
+
+  if (!isProvider(provider)) throw new functions.https.HttpsError("invalid-argument", "Invalid provider");
+  if (!transactionId || !isValidTransactionId(transactionId)) {
+    throw new functions.https.HttpsError("invalid-argument", "Invalid transactionId");
+  }
+  if (!userId || !isValidUserId(userId)) throw new functions.https.HttpsError("invalid-argument", "Invalid userId");
+  if (coinsAwarded === null || !Number.isInteger(coinsAwarded) || coinsAwarded < 1 || coinsAwarded > MAX_COINS) {
+    throw new functions.https.HttpsError("invalid-argument", `coinsAwarded must be an integer from 1 to ${MAX_COINS}`);
+  }
+  if (!reason) throw new functions.https.HttpsError("invalid-argument", "reason is required");
+
+  return executeCallback({
+    provider,
+    transactionId,
     userId,
-    type: coinDelta > 0 ? "credit" : "debit",
-    amount: Math.abs(coinDelta),
+    coinsAwarded,
     reason,
-    balanceBefore: currentBalance,
-    balanceAfter: newBalance,
-    metadata,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    metadata: { source: "admin" },
   });
-
-  return { newBalance, newLifetime };
-}
+});

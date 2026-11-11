@@ -1,5 +1,5 @@
 import React from 'react';
-import { Moon, Globe, Mail, Smartphone, ShieldCheck } from 'lucide-react';
+import { Moon, Globe, Mail, Smartphone } from 'lucide-react';
 
 interface Props {
   onGoogleLogin: () => void;
@@ -7,7 +7,6 @@ interface Props {
   onVerifyOtp: (otp: string) => Promise<void>;
   onEmailLogin: (email: string, password: string) => Promise<void>;
   onEmailSignup: (email: string, password: string) => Promise<void>;
-  onQuickAdminLogin?: () => void;
 
   phoneStep: 'idle' | 'code';
   setPhoneStep: (v: 'idle' | 'code') => void;
@@ -45,7 +44,6 @@ export const LandingPage: React.FC<Props> = ({
   onVerifyOtp,
   onEmailLogin,
   onEmailSignup,
-  onQuickAdminLogin,
   phoneStep,
   setPhoneStep,
   countryCode,
@@ -291,18 +289,6 @@ export const LandingPage: React.FC<Props> = ({
               <Globe className="w-4 h-4" />
             </button>
 
-            {onQuickAdminLogin && (
-              <button
-                type="button"
-                onClick={onQuickAdminLogin}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-xs text-[#7848f4] font-bold transition"
-                title="Direct Admin Console"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-[#7848f4]" />
-                <span className="hidden sm:inline">Admin</span>
-              </button>
-            )}
-
             <button
               type="button"
               onClick={() => scrollTo('join')}
@@ -480,26 +466,6 @@ export const LandingPage: React.FC<Props> = ({
               ) : (
                 /* Email authentication */
                 <form onSubmit={handleContinue} className="space-y-4">
-                  {/* Admin account indicator */}
-                  {(email.trim().toLowerCase() === 'admin@paisabharo.com' ||
-                    email.trim().toLowerCase() === 'stickadmob@gmail.com') && (
-                    <div className="p-3 bg-purple-50 border border-purple-200 rounded-xl flex items-center justify-between text-xs text-purple-900 animate-fadeIn">
-                      <div className="flex items-center gap-1.5 font-semibold">
-                        <ShieldCheck className="w-4 h-4 text-[#7848f4]" />
-                        <span>Admin account detected</span>
-                      </div>
-                      {onQuickAdminLogin && (
-                        <button
-                          type="button"
-                          onClick={onQuickAdminLogin}
-                          className="px-2.5 py-1 rounded-lg bg-[#7848f4] hover:bg-[#6837e3] text-white font-bold transition shadow-sm"
-                        >
-                          Enter Admin &rarr;
-                        </button>
-                      )}
-                    </div>
-                  )}
-
                   <input
                     type="email"
                     placeholder="Email address"
@@ -530,8 +496,6 @@ export const LandingPage: React.FC<Props> = ({
                   >
                     {phoneLoading
                       ? 'Processing...'
-                      : (email.trim().toLowerCase() === 'admin@paisabharo.com' || email.trim().toLowerCase() === 'stickadmob@gmail.com')
-                      ? 'LOGIN AS ADMIN'
                       : isLogin
                       ? 'LOGIN'
                       : 'SIGN UP'}
@@ -570,19 +534,6 @@ export const LandingPage: React.FC<Props> = ({
                 </svg>
                 CONTINUE WITH GOOGLE
               </button>
-
-              {onQuickAdminLogin && (
-                <div className="mt-4 pt-3 border-t border-dashed border-gray-200 text-center">
-                  <button
-                    type="button"
-                    onClick={onQuickAdminLogin}
-                    className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-[#7848f4] font-medium transition"
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5 text-[#7848f4]" />
-                    <span>Administrator Console (admin@paisabharo.com)</span>
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         </div>

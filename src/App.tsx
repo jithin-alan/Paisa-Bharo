@@ -87,17 +87,11 @@ const AppContent: React.FC = () => {
     clearToast,
     logout,
     loginWithGoogle,
-    isAdminEmail,
-    loginAsAdmin,
     systemSettings,
   } = useApp();
 
-  // Admin status comes from the Firebase Auth custom claim, not Firestore.
-  // Also check email directly for development mode.
+  // Admin status is determined by custom claims via the useIsAdmin hook
   const { isAdmin, checked: adminChecked } = useIsAdmin();
-
-  // Immediate admin check based on Firebase user email (for faster redirect)
-  const immediateIsAdmin = firebaseUser ? isAdminEmail(firebaseUser.email || '') : false;
 
   const handleOpenCintSurvey = async (specificSurvey?: CintSurvey) => {
     if (specificSurvey) {
@@ -169,34 +163,12 @@ const AppContent: React.FC = () => {
     setPhoneLoading(true);
     const cleanEmail = email.trim().toLowerCase();
 
-    // If entering as admin
-    if (isAdminEmail(cleanEmail)) {
-      try {
-        await signInWithEmailAndPassword(auth, cleanEmail, password);
-      } catch (e: any) {
-        console.warn('Admin Firebase Auth login notice:', e);
-        if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
-          try {
-            await createUserWithEmailAndPassword(auth, cleanEmail, password);
-            return;
-          } catch (signupErr: any) {
-            console.warn('Admin sign up notice:', signupErr);
-          }
-        }
-        // Direct admin authorization for development/testing
-        loginAsAdmin();
-      } finally {
-        setPhoneLoading(false);
-      }
-      return;
-    }
-
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(auth, cleanEmail, password);
     } catch (e: any) {
       if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
         try {
-          await createUserWithEmailAndPassword(auth, email, password);
+          await createUserWithEmailAndPassword(auth, cleanEmail, password);
           return;
         } catch (signupErr: any) {
           if (signupErr.code === 'auth/operation-not-allowed') {
@@ -221,20 +193,8 @@ const AppContent: React.FC = () => {
     setPhoneLoading(true);
     const cleanEmail = email.trim().toLowerCase();
 
-    if (isAdminEmail(cleanEmail)) {
-      try {
-        await createUserWithEmailAndPassword(auth, cleanEmail, password);
-      } catch (e: any) {
-        console.warn('Admin signup notice:', e);
-        loginAsAdmin();
-      } finally {
-        setPhoneLoading(false);
-      }
-      return;
-    }
-
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      await createUserWithEmailAndPassword(auth, cleanEmail, password);
     } catch (e: any) {
       if (e.code === 'auth/operation-not-allowed') {
         setEmailError('Email/Password provider is disabled in Firebase Console. Please enable it in Firebase Console > Authentication > Sign-in method, or sign in with Google.');
@@ -257,10 +217,9 @@ const AppContent: React.FC = () => {
   }
 
   // Admin users get the admin panel as their landing page
-  // Check both Firebase user token/email and local admin session
-  const isUserAdmin =
-    (firebaseUser && (immediateIsAdmin || isAdmin)) ||
-    (user && (user.isAdmin === true || isAdminEmail(user.email || '')));
+  // Admin status is determined by custom claims via useIsAdmin hook
+  // Wait for adminChecked to avoid race conditions on initial load
+  const isUserAdmin = adminChecked && isAdmin;
 
   if (isUserAdmin && adminViewMode === 'admin') {
     return <AdminConfigView onSwitchToUserApp={() => setAdminViewMode('user')} />;
@@ -292,7 +251,9 @@ const AppContent: React.FC = () => {
     );
   }
 
-  if (!firebaseUser && !user) {
+  // Show landing page whenever there is no loaded user profile.
+  // This covers: not logged in, logged in but profile still loading.
+  if (!user) {
     return (
       <LandingPage
         onGoogleLogin={loginWithGoogle}
@@ -300,7 +261,6 @@ const AppContent: React.FC = () => {
         onVerifyOtp={verifyOtp}
         onEmailLogin={handleEmailLogin}
         onEmailSignup={handleEmailSignup}
-        onQuickAdminLogin={loginAsAdmin}
         phoneStep={phoneStep}
         setPhoneStep={setPhoneStep}
         countryCode={countryCode}

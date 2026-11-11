@@ -3,19 +3,19 @@ export interface UserProfile {
   displayName: string;
   email: string;
   photoURL?: string;
-  coinsBalance: number;
-  lifetimeEarnings: number;
-  streakDays: number;
-  lastCheckInDate: string; // YYYY-MM-DD
-  referralCode: string;
+  coinsBalance?: number;
+  lifetimeEarnings?: number;
+  streakDays?: number;
+  lastCheckInDate?: string; // YYYY-MM-DD
+  referralCode?: string;
   referredBy?: string;
   country: string;
   currency: string;
   language: string;
-  createdAt: string;
-  updatedAt: string;
-  // CRITICAL: isAdmin is a runtime-only field, NOT stored in Firestore
-  // Admin status is determined server-side from the 'admins' collection
+  createdAt?: string;
+  updatedAt?: string;
+  // CRITICAL: isAdmin is a runtime-only field determined by Firebase Auth custom claims.
+  // It is NOT stored in Firestore. Use the useIsAdmin() hook to get admin status.
   isAdmin?: boolean;
 }
 

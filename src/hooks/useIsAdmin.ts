@@ -1,42 +1,11 @@
 import { useEffect, useState } from 'react';
 import { onIdTokenChanged, User as FirebaseUser } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase/config';
+import { auth } from '../firebase/config';
 
-// Admin email addresses - useful for development/testing
-const ADMIN_EMAILS = ['admin@paisabharo.com', 'stickadmob@gmail.com'];
-
-async function checkAdminStatus(user: FirebaseUser) {
-  // Check custom claims first (production approach)
+async function checkAdminStatus(user: FirebaseUser): Promise<boolean> {
+  // Check custom claims (production approach)
   const result = await user.getIdTokenResult();
-  const hasCustomClaim = result.claims.admin === true;
-
-  // Check if user email is in the admin email list (for development/testing)
-  const isAdminEmail = ADMIN_EMAILS.includes(user.email || '');
-
-  // Also check Firestore admins collection (development/simulation approach)
-  let isInAdminsCollection = false;
-  try {
-    const adminDoc = await getDoc(doc(db, 'admins', user.uid));
-    isInAdminsCollection = adminDoc.exists();
-  } catch {
-    // Firestore check failed, skip
-  }
-
-  const finalResult = hasCustomClaim || isAdminEmail || isInAdminsCollection;
-
-  // Debug logging
-  console.log('🔍 Admin check details:', {
-    email: user.email,
-    uid: user.uid,
-    hasCustomClaim,
-    isAdminEmail,
-    isInAdminsCollection,
-    finalResult
-  });
-
-  // Admin if any of these conditions are met
-  return finalResult;
+  return result.claims.admin === true;
 }
 
 export function useIsAdmin() {

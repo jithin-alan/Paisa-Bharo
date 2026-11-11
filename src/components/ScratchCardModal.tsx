@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { X, Sparkles, Gift } from 'lucide-react';
+import { X, Sparkles, Gift, Loader2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { PollPeCoin } from './Illustrations';
 
@@ -12,7 +12,8 @@ export const ScratchCardModal: React.FC<Props> = ({ onClose }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [claimed, setClaimed] = useState(false);
-  const [rewardAmount] = useState(() => Math.floor(Math.random() * (120 - 35 + 1)) + 35);
+  const [rewardAmount, setRewardAmount] = useState<number>(0);
+  const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -83,12 +84,14 @@ export const ScratchCardModal: React.FC<Props> = ({ onClose }) => {
   };
 
   const handleClaim = async () => {
-    if (claimed) return;
+    if (claimed || processing) return;
+    setProcessing(true);
+    const result = await claimScratchCard();
+    setRewardAmount(result.coins);
     setClaimed(true);
-    await claimScratchCard(rewardAmount);
     setTimeout(() => {
       onClose();
-    }, 1200);
+    }, 1500);
   };
 
   return (
@@ -112,16 +115,25 @@ export const ScratchCardModal: React.FC<Props> = ({ onClose }) => {
 
         {/* Scratch Area */}
         <div className="relative w-64 h-44 mx-auto rounded-2xl overflow-hidden border-2 border-[#e5dcfa] shadow-inner bg-gradient-to-br from-[#faf8ff] via-[#f0ebfc] to-[#e8e0fc] flex flex-col items-center justify-center select-none">
-          {/* Hidden Content Beneath */}
+          {/* Hidden Content Beneath - shows amount from server */}
           <div className="p-4 text-center">
-            <Gift className="w-10 h-10 text-[#7848f4] mx-auto animate-bounce" />
-            <div className="text-3xl font-black text-gray-900 mt-2 flex items-center justify-center gap-1.5">
-              <span>+{rewardAmount}</span>
-              <PollPeCoin className="w-6 h-6" />
-            </div>
-            <div className="text-xs font-bold text-[#7848f4] uppercase tracking-widest mt-0.5">
-              Paisa Coins
-            </div>
+            {processing ? (
+              <div className="flex flex-col items-center justify-center h-full">
+                <Loader2 className="w-8 h-8 text-[#7848f4] animate-spin mb-2" />
+                <Gift className="w-6 h-6 text-[#7848f4] mx-auto mb-1" />
+              </div>
+            ) : (
+              <>
+                <Gift className="w-10 h-10 text-[#7848f4] mx-auto animate-bounce" />
+                <div className="text-3xl font-black text-gray-900 mt-2 flex items-center justify-center gap-1.5">
+                  <span>+{rewardAmount > 0 ? rewardAmount : '?'}</span>
+                  <PollPeCoin className="w-6 h-6" />
+                </div>
+                <div className="text-xs font-bold text-[#7848f4] uppercase tracking-widest mt-0.5">
+                  Paisa Coins
+                </div>
+              </>
+            )}
           </div>
 
           {/* Canvas Scratch Layer */}
@@ -142,9 +154,10 @@ export const ScratchCardModal: React.FC<Props> = ({ onClose }) => {
         <div className="mt-6">
           <button
             onClick={revealed ? handleClaim : () => setRevealed(true)}
-            className="w-full py-3.5 rounded-xl bg-[#7848f4] hover:bg-[#6837e3] text-white font-black text-sm shadow-[0_4px_14px_rgba(120,72,244,0.35)] transition cursor-pointer active:scale-95"
+            disabled={!revealed || processing}
+            className="w-full py-3.5 rounded-xl bg-[#7848f4] hover:bg-[#6837e3] text-white font-black text-sm shadow-[0_4px_14px_rgba(120,72,244,0.35)] transition cursor-pointer active:scale-95 disabled:opacity-60"
           >
-            {claimed ? 'Coins Credited! 🎉' : revealed ? `Claim +${rewardAmount} Coins Now` : 'Reveal Instantly'}
+            {processing ? 'Processing...' : claimed ? 'Coins Credited! 🎉' : revealed ? `Claim +${rewardAmount > 0 ? rewardAmount : '?'} Coins Now` : 'Reveal Instantly'}
           </button>
         </div>
       </div>

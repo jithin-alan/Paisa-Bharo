@@ -19,6 +19,12 @@ export const HomeDashboardView: React.FC<Props> = ({
   onOpenWebhookTester,
 }) => {
   const { user, selectedCurrency, setActiveSurvey, surveys, votePoll } = useApp();
+
+  // Defensive check: user should always exist when this view is rendered
+  // but handle null/undefined gracefully to prevent crashes
+  const coins = user?.coinsBalance ?? 0;
+  const lifetime = user?.lifetimeEarnings ?? 0;
+
   const [questTasks, setQuestTasks] = useState([
     { id: 't1', title: 'Earn from Playtime', completed: false },
     { id: 't2', title: 'Complete a Pubscale task', completed: false },
@@ -84,19 +90,19 @@ export const HomeDashboardView: React.FC<Props> = ({
               <div className="flex items-center gap-2 mt-0.5">
                 <PollPeCoin className="w-6 h-6 shrink-0" />
                 <span className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
-                  {user.coinsBalance.toLocaleString()}
+                  {coins.toLocaleString()}
                 </span>
               </div>
 
               {/* Currency conversion progress pill */}
               <div className="mt-2.5 flex items-center gap-2">
                 <div className="flex items-center gap-2 bg-[#f0ebfc] px-2.5 py-1 rounded-full text-xs font-bold text-[#7848f4]">
-                  <span>{formatCoinsValue(user.coinsBalance, selectedCurrency)}</span>
+                  <span>{formatCoinsValue(coins, selectedCurrency)}</span>
                 </div>
                 <div className="w-24 sm:w-32 h-2 bg-[#f0ebfc] rounded-full overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-[#7848f4] to-[#9d65fc] rounded-full"
-                    style={{ width: `${Math.min(100, (user.coinsBalance / 1000) * 100)}%` }}
+                    style={{ width: `${Math.min(100, (coins / 1000) * 100)}%` }}
                   />
                 </div>
                 <button
