@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { X, Sparkles, Gift, Loader2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { PollPeCoin } from './Illustrations';
+import { PaisaBharoCoin } from './Illustrations';
 
 interface Props {
   onClose: () => void;
@@ -24,11 +24,11 @@ export const ScratchCardModal: React.FC<Props> = ({ onClose }) => {
     const width = canvas.width;
     const height = canvas.height;
 
-    // Draw scratchable overlay in PollPe Royal Purple #7848F4
+    // Draw scratchable overlay in Paisa Bharo Royal Blue #072ac8
     const grad = ctx.createLinearGradient(0, 0, width, height);
-    grad.addColorStop(0, '#8e52f5');
-    grad.addColorStop(0.5, '#7848f4');
-    grad.addColorStop(1, '#602ce8');
+    grad.addColorStop(0, '#1d4ed8');
+    grad.addColorStop(0.5, '#072ac8');
+    grad.addColorStop(1, '#05219e');
 
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
@@ -96,7 +96,7 @@ export const ScratchCardModal: React.FC<Props> = ({ onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="w-full max-w-sm rounded-[28px] bg-white border border-[#e5dcfa] shadow-2xl p-6 text-center text-gray-900 relative">
+      <div className="w-full max-w-sm rounded-[28px] bg-white border border-[#bde0fe] shadow-2xl p-6 text-center text-gray-900 relative">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1 rounded-xl hover:bg-gray-100"
@@ -114,22 +114,22 @@ export const ScratchCardModal: React.FC<Props> = ({ onClose }) => {
         </p>
 
         {/* Scratch Area */}
-        <div className="relative w-64 h-44 mx-auto rounded-2xl overflow-hidden border-2 border-[#e5dcfa] shadow-inner bg-gradient-to-br from-[#faf8ff] via-[#f0ebfc] to-[#e8e0fc] flex flex-col items-center justify-center select-none">
+        <div className="relative w-64 h-44 mx-auto rounded-2xl overflow-hidden border-2 border-[#bde0fe] shadow-inner bg-gradient-to-br from-[#f0f8fc] via-[#e6f4fa] to-[#d0e8f7] flex flex-col items-center justify-center select-none">
           {/* Hidden Content Beneath - shows amount from server */}
           <div className="p-4 text-center">
             {processing ? (
               <div className="flex flex-col items-center justify-center h-full">
-                <Loader2 className="w-8 h-8 text-[#7848f4] animate-spin mb-2" />
-                <Gift className="w-6 h-6 text-[#7848f4] mx-auto mb-1" />
+                <Loader2 className="w-8 h-8 text-[#072ac8] animate-spin mb-2" />
+                <Gift className="w-6 h-6 text-[#072ac8] mx-auto mb-1" />
               </div>
             ) : (
               <>
-                <Gift className="w-10 h-10 text-[#7848f4] mx-auto animate-bounce" />
+                <Gift className="w-10 h-10 text-[#072ac8] mx-auto animate-bounce" />
                 <div className="text-3xl font-black text-gray-900 mt-2 flex items-center justify-center gap-1.5">
                   <span>+{rewardAmount > 0 ? rewardAmount : '?'}</span>
-                  <PollPeCoin className="w-6 h-6" />
+                  <PaisaBharoCoin className="w-6 h-6" />
                 </div>
-                <div className="text-xs font-bold text-[#7848f4] uppercase tracking-widest mt-0.5">
+                <div className="text-xs font-bold text-[#072ac8] uppercase tracking-widest mt-0.5">
                   Paisa Coins
                 </div>
               </>
@@ -155,7 +155,7 @@ export const ScratchCardModal: React.FC<Props> = ({ onClose }) => {
           <button
             onClick={revealed ? handleClaim : () => setRevealed(true)}
             disabled={!revealed || processing}
-            className="w-full py-3.5 rounded-xl bg-[#7848f4] hover:bg-[#6837e3] text-white font-black text-sm shadow-[0_4px_14px_rgba(120,72,244,0.35)] transition cursor-pointer active:scale-95 disabled:opacity-60"
+            className="w-full py-3.5 rounded-xl bg-[#072ac8] hover:bg-[#05219e] text-white font-black text-sm shadow-[0_4px_14px_rgba(7,42,200,0.35)] transition cursor-pointer active:scale-95 disabled:opacity-60"
           >
             {processing ? 'Processing...' : claimed ? 'Coins Credited! 🎉' : revealed ? `Claim +${rewardAmount > 0 ? rewardAmount : '?'} Coins Now` : 'Reveal Instantly'}
           </button>

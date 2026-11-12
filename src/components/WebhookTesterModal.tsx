@@ -108,11 +108,11 @@ export const WebhookTesterModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="w-full max-w-xl max-h-[90vh] rounded-[28px] bg-white border border-[#e5dcfa] shadow-2xl p-6 text-gray-900 flex flex-col overflow-hidden space-y-4">
+      <div className="w-full max-w-xl max-h-[90vh] rounded-[28px] bg-white border border-[#bde0fe] shadow-2xl p-6 text-gray-900 flex flex-col overflow-hidden space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-[#eceaf5] shrink-0">
+        <div className="flex items-center justify-between pb-3 border-b border-[#d0e8f7] shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#f0ebfc] text-[#7848f4] flex items-center justify-center font-black">
+            <div className="w-9 h-9 rounded-xl bg-[#e6f4fa] text-[#072ac8] flex items-center justify-center font-black">
               <Terminal className="w-4 h-4" />
             </div>
             <div>
@@ -134,7 +134,7 @@ export const WebhookTesterModal: React.FC<Props> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Tab Pills */}
-        <div className="flex items-center gap-1.5 p-1 bg-[#f0ebfc] rounded-xl shrink-0">
+        <div className="flex items-center gap-1.5 p-1 bg-[#e6f4fa] rounded-xl shrink-0">
           {[
             { id: 'cint', label: '1. Cint Survey' },
             { id: 'adgem', label: '2. AdGem Offerwall' },
@@ -149,8 +149,8 @@ export const WebhookTesterModal: React.FC<Props> = ({ isOpen, onClose }) => {
               }}
               className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                 activeTab === tab.id
-                  ? 'bg-white text-[#7848f4] shadow-sm'
-                  : 'text-gray-600 hover:text-[#7848f4]'
+                  ? 'bg-white text-[#072ac8] shadow-sm'
+                  : 'text-gray-600 hover:text-[#072ac8]'
               }`}
             >
               {tab.label}
@@ -168,7 +168,7 @@ export const WebhookTesterModal: React.FC<Props> = ({ isOpen, onClose }) => {
                 <select
                   value={cintStatus}
                   onChange={(e) => setCintStatus(e.target.value as any)}
-                  className="w-full p-2.5 rounded-xl bg-white border border-[#e5dcfa] font-bold text-gray-800"
+                  className="w-full p-2.5 rounded-xl bg-white border border-[#bde0fe] font-bold text-gray-800"
                 >
                   <option value="complete">complete (Credit Coins)</option>
                   <option value="screenout">screenout (Consolation 15 coins)</option>
@@ -183,14 +183,14 @@ export const WebhookTesterModal: React.FC<Props> = ({ isOpen, onClose }) => {
                   type="number"
                   value={cintCoins}
                   onChange={(e) => setCintCoins(Number(e.target.value))}
-                  className="w-full p-2 rounded-xl bg-white border border-[#e5dcfa] font-bold text-gray-800"
+                  className="w-full p-2 rounded-xl bg-white border border-[#bde0fe] font-bold text-gray-800"
                 />
               </div>
 
               <button
                 disabled={loading}
                 onClick={handleTestCint}
-                className="w-full py-2.5 rounded-xl bg-[#7848f4] hover:bg-[#6837e3] text-white font-extrabold flex items-center justify-center gap-1.5 cursor-pointer shadow"
+                className="w-full py-2.5 rounded-xl bg-[#072ac8] hover:bg-[#05219e] text-white font-extrabold flex items-center justify-center gap-1.5 cursor-pointer shadow"
               >
                 {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                 <span>Trigger Cint Callback</span>
@@ -217,7 +217,7 @@ export const WebhookTesterModal: React.FC<Props> = ({ isOpen, onClose }) => {
                   type="number"
                   value={adgemCoins}
                   onChange={(e) => setAdgemCoins(Number(e.target.value))}
-                  className="w-full p-2 rounded-xl bg-white border border-[#e5dcfa] font-bold text-gray-800"
+                  className="w-full p-2 rounded-xl bg-white border border-[#bde0fe] font-bold text-gray-800"
                 />
               </div>
 
@@ -251,7 +251,7 @@ export const WebhookTesterModal: React.FC<Props> = ({ isOpen, onClose }) => {
                   type="number"
                   value={bitlabsCoins}
                   onChange={(e) => setBitlabsCoins(Number(e.target.value))}
-                  className="w-full p-2 rounded-xl bg-white border border-[#e5dcfa] font-bold text-gray-800"
+                  className="w-full p-2 rounded-xl bg-white border border-[#bde0fe] font-bold text-gray-800"
                 />
               </div>
 
@@ -275,7 +275,7 @@ export const WebhookTesterModal: React.FC<Props> = ({ isOpen, onClose }) => {
                   <select
                     value={affiliateNetwork}
                     onChange={(e) => setAffiliateNetwork(e.target.value as any)}
-                    className="w-full p-2 rounded-xl bg-white border border-[#e5dcfa] font-bold"
+                    className="w-full p-2 rounded-xl bg-white border border-[#bde0fe] font-bold"
                   >
                     <option value="Awin">Awin</option>
                     <option value="CJ">CJ Affiliate</option>
@@ -289,7 +289,7 @@ export const WebhookTesterModal: React.FC<Props> = ({ isOpen, onClose }) => {
                     type="text"
                     value={affiliateMerchant}
                     onChange={(e) => setAffiliateMerchant(e.target.value)}
-                    className="w-full p-2 rounded-xl bg-white border border-[#e5dcfa] font-bold"
+                    className="w-full p-2 rounded-xl bg-white border border-[#bde0fe] font-bold"
                   />
                 </div>
               </div>
@@ -300,7 +300,7 @@ export const WebhookTesterModal: React.FC<Props> = ({ isOpen, onClose }) => {
                   type="number"
                   value={affiliateCoins}
                   onChange={(e) => setAffiliateCoins(Number(e.target.value))}
-                  className="w-full p-2 rounded-xl bg-white border border-[#e5dcfa] font-bold text-gray-800"
+                  className="w-full p-2 rounded-xl bg-white border border-[#bde0fe] font-bold text-gray-800"
                 />
               </div>
 
@@ -328,7 +328,7 @@ export const WebhookTesterModal: React.FC<Props> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Footer */}
-        <div className="pt-2 border-t border-[#eceaf5] flex items-center justify-between text-xs text-gray-500">
+        <div className="pt-2 border-t border-[#d0e8f7] flex items-center justify-between text-xs text-gray-500">
           <span>Updates user wallet balance in real-time.</span>
           <button
             onClick={onClose}

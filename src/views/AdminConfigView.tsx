@@ -282,10 +282,10 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
   return (
     <div className="space-y-6 pb-12 text-gray-900 max-w-6xl mx-auto px-4 sm:px-6 pt-6 font-sans">
       {/* Top Banner / Header */}
-      <div className="bg-white rounded-[28px] border border-[#e5dcfa] p-6 sm:p-8 shadow-[0_4px_20px_rgba(120,72,244,0.05)]">
+      <div className="bg-white rounded-[28px] border border-[#bde0fe] p-6 sm:p-8 shadow-[0_4px_20px_rgba(7,42,200,0.05)]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-[#7848f4] text-white flex items-center justify-center shadow-md shadow-purple-500/20">
+            <div className="w-12 h-12 rounded-2xl bg-[#072ac8] text-white flex items-center justify-center shadow-md shadow-[#072ac8]/20">
               <Settings className="w-6 h-6" />
             </div>
             <div>
@@ -296,7 +296,7 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
                 </span>
               </div>
               <p className="text-xs text-gray-500 mt-0.5">
-                Database: <code className="text-[#7848f4] font-semibold">ai-studio-ba803483-ddcf-496c-b3c9-7d1a85fc5692</code>
+                Database: <code className="text-[#072ac8] font-semibold">ai-studio-ba803483-ddcf-496c-b3c9-7d1a85fc5692</code>
               </p>
             </div>
           </div>
@@ -309,7 +309,7 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 text-xs font-bold transition cursor-pointer shadow-sm disabled:opacity-60"
               title="Refresh live metrics from Firestore"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-[#7848f4]' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-[#072ac8]' : ''}`} />
               <span>Refresh</span>
             </button>
 
@@ -317,7 +317,7 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
               <button
                 type="button"
                 onClick={onSwitchToUserApp}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#7848f4] text-white hover:bg-[#6837e3] font-bold text-xs transition cursor-pointer shadow-md shadow-purple-500/20"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#072ac8] text-white hover:bg-[#05219e] font-bold text-xs transition cursor-pointer shadow-md shadow-[#072ac8]/20"
               >
                 <span>View User App</span>
                 <span>&rarr;</span>
@@ -337,29 +337,29 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
 
         {/* Live Metrics Row */}
         <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="bg-[#f0ebfc] rounded-2xl p-3.5 text-center border border-[#e5dcfa]">
-            <span className="text-[11px] font-bold text-[#7848f4] uppercase tracking-wider">Registered Users</span>
+          <div className="bg-[#e6f4fa] rounded-2xl p-3.5 text-center border border-[#bde0fe]">
+            <span className="text-[11px] font-bold text-[#072ac8] uppercase tracking-wider">Registered Users</span>
             <p className="text-xl sm:text-2xl font-black text-gray-900 mt-0.5">
               {adminStats.totalUsers.toLocaleString()}
             </p>
           </div>
 
-          <div className="bg-[#f0ebfc] rounded-2xl p-3.5 text-center border border-[#e5dcfa]">
-            <span className="text-[11px] font-bold text-[#7848f4] uppercase tracking-wider">Polls & Tasks</span>
+          <div className="bg-[#e6f4fa] rounded-2xl p-3.5 text-center border border-[#bde0fe]">
+            <span className="text-[11px] font-bold text-[#072ac8] uppercase tracking-wider">Polls & Tasks</span>
             <p className="text-xl sm:text-2xl font-black text-gray-900 mt-0.5">
               {adminStats.totalPolls}
             </p>
           </div>
 
-          <div className="bg-[#f0ebfc] rounded-2xl p-3.5 text-center border border-[#e5dcfa]">
-            <span className="text-[11px] font-bold text-[#7848f4] uppercase tracking-wider">Coins Distributed</span>
+          <div className="bg-[#e6f4fa] rounded-2xl p-3.5 text-center border border-[#bde0fe]">
+            <span className="text-[11px] font-bold text-[#072ac8] uppercase tracking-wider">Coins Distributed</span>
             <p className="text-xl sm:text-2xl font-black text-gray-900 mt-0.5">
               {adminStats.totalCoins.toLocaleString()}
             </p>
           </div>
 
-          <div className="bg-[#f0ebfc] rounded-2xl p-3.5 text-center border border-[#e5dcfa]">
-            <span className="text-[11px] font-bold text-[#7848f4] uppercase tracking-wider">Pending Cashouts</span>
+          <div className="bg-[#e6f4fa] rounded-2xl p-3.5 text-center border border-[#bde0fe]">
+            <span className="text-[11px] font-bold text-[#072ac8] uppercase tracking-wider">Pending Cashouts</span>
             <p className="text-xl sm:text-2xl font-black text-gray-900 mt-0.5 flex items-center justify-center gap-1.5">
               <span>{pendingRedemptionsCount}</span>
               {pendingRedemptionsCount > 0 && (
@@ -371,13 +371,13 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
       </div>
 
       {/* 1. Live Redemptions Queue */}
-      <div className="bg-white rounded-[28px] border border-[#e5dcfa] shadow-[0_4px_20px_rgba(120,72,244,0.05)] overflow-hidden">
+      <div className="bg-white rounded-[28px] border border-[#bde0fe] shadow-[0_4px_20px_rgba(7,42,200,0.05)] overflow-hidden">
         <button
           onClick={() => toggleSection('redemptions')}
           className="w-full px-6 py-5 sm:p-6 flex items-center justify-between hover:bg-gray-50/70 transition"
         >
           <div className="flex items-center gap-3">
-            <CreditCard className="w-5 h-5 text-[#7848f4]" />
+            <CreditCard className="w-5 h-5 text-[#072ac8]" />
             <div className="text-left">
               <div className="flex items-center gap-2">
                 <h3 className="text-sm sm:text-base font-black text-gray-900">Live Redemptions Queue</h3>
@@ -403,7 +403,7 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
                   onClick={() => setRedemptionFilter(f)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold capitalize transition cursor-pointer ${
                     redemptionFilter === f
-                      ? 'bg-[#7848f4] text-white'
+                      ? 'bg-[#072ac8] text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
@@ -496,17 +496,17 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
       </div>
 
       {/* 2. Offerwall Settings (Live Switcher) */}
-      <div className="bg-white rounded-[28px] border border-[#e5dcfa] shadow-[0_4px_20px_rgba(120,72,244,0.05)] overflow-hidden">
+      <div className="bg-white rounded-[28px] border border-[#bde0fe] shadow-[0_4px_20px_rgba(7,42,200,0.05)] overflow-hidden">
         <button
           onClick={() => toggleSection('offerwall')}
           className="w-full px-6 py-5 sm:p-6 flex items-center justify-between hover:bg-gray-50/70 transition"
         >
           <div className="flex items-center gap-3">
-            <Gift className="w-5 h-5 text-[#7848f4]" />
+            <Gift className="w-5 h-5 text-[#072ac8]" />
             <div className="text-left">
               <div className="flex items-center gap-2">
                 <h3 className="text-sm sm:text-base font-black text-gray-900">Offerwall Provider (AdGem / BitLabs)</h3>
-                <span className="px-2 py-0.5 rounded-full bg-purple-100 text-[#7848f4] text-[10px] font-black uppercase tracking-wider">
+                <span className="px-2 py-0.5 rounded-full bg-[#e6f4fa] text-[#072ac8] text-[10px] font-black uppercase tracking-wider">
                   Active: {systemSettings?.offerwallProvider?.toUpperCase() || 'ADGEM'}
                 </span>
               </div>
@@ -529,12 +529,12 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
                   onClick={() => setOfferwallProvider('adgem')}
                   className={`p-4 rounded-2xl border text-left transition cursor-pointer relative ${
                     systemSettings?.offerwallProvider === 'adgem'
-                      ? 'bg-purple-50/80 border-[#7848f4] text-[#7848f4] shadow-sm'
+                      ? 'bg-[#e6f4fa]/80 border-[#072ac8] text-[#072ac8] shadow-sm'
                       : 'bg-white border-gray-200 text-gray-700 hover:border-purple-200'
                   }`}
                 >
                   {systemSettings?.offerwallProvider === 'adgem' && (
-                    <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-[#7848f4]" />
+                    <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-[#072ac8]" />
                   )}
                   <p className="font-black text-sm">AdGem</p>
                   <p className="text-[11px] text-gray-500 mt-0.5">Primary gaming and task offerwall with S2S postback</p>
@@ -545,12 +545,12 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
                   onClick={() => setOfferwallProvider('bitlabs')}
                   className={`p-4 rounded-2xl border text-left transition cursor-pointer relative ${
                     systemSettings?.offerwallProvider === 'bitlabs'
-                      ? 'bg-purple-50/80 border-[#7848f4] text-[#7848f4] shadow-sm'
+                      ? 'bg-[#e6f4fa]/80 border-[#072ac8] text-[#072ac8] shadow-sm'
                       : 'bg-white border-gray-200 text-gray-700 hover:border-purple-200'
                   }`}
                 >
                   {systemSettings?.offerwallProvider === 'bitlabs' && (
-                    <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-[#7848f4]" />
+                    <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-[#072ac8]" />
                   )}
                   <p className="font-black text-sm">BitLabs</p>
                   <p className="text-[11px] text-gray-500 mt-0.5">Backup offerwall and survey wall adapter</p>
@@ -562,13 +562,13 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
       </div>
 
       {/* 3. System Maintenance Mode */}
-      <div className="bg-white rounded-[28px] border border-[#e5dcfa] shadow-[0_4px_20px_rgba(120,72,244,0.05)] overflow-hidden">
+      <div className="bg-white rounded-[28px] border border-[#bde0fe] shadow-[0_4px_20px_rgba(7,42,200,0.05)] overflow-hidden">
         <button
           onClick={() => toggleSection('maintenance')}
           className="w-full px-6 py-5 sm:p-6 flex items-center justify-between hover:bg-gray-50/70 transition"
         >
           <div className="flex items-center gap-3">
-            <Shield className="w-5 h-5 text-[#7848f4]" />
+            <Shield className="w-5 h-5 text-[#072ac8]" />
             <div className="text-left">
               <div className="flex items-center gap-2">
                 <h3 className="text-sm sm:text-base font-black text-gray-900">Maintenance Mode Control</h3>
@@ -620,14 +620,14 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
                   type="text"
                   value={maintenanceMessage}
                   onChange={(e) => setMaintenanceMessage(e.target.value)}
-                  className="flex-1 px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#7848f4]"
+                  className="flex-1 px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#072ac8]"
                   placeholder="System maintenance in progress. We will be back shortly!"
                 />
                 <button
                   type="button"
                   onClick={() => handleSaveMaintenance(systemSettings?.maintenanceMode || false)}
                   disabled={savingSettings}
-                  className="px-4 py-2 rounded-xl bg-[#7848f4] text-white text-xs font-bold hover:bg-[#6837e3] transition cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-[#072ac8] text-white text-xs font-bold hover:bg-[#05219e] transition cursor-pointer"
                 >
                   Save Message
                 </button>
@@ -638,13 +638,13 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
       </div>
 
       {/* 4. Economy & Rewards Settings */}
-      <div className="bg-white rounded-[28px] border border-[#e5dcfa] shadow-[0_4px_20px_rgba(120,72,244,0.05)] overflow-hidden">
+      <div className="bg-white rounded-[28px] border border-[#bde0fe] shadow-[0_4px_20px_rgba(7,42,200,0.05)] overflow-hidden">
         <button
           onClick={() => toggleSection('economy')}
           className="w-full px-6 py-5 sm:p-6 flex items-center justify-between hover:bg-gray-50/70 transition"
         >
           <div className="flex items-center gap-3">
-            <Coins className="w-5 h-5 text-[#7848f4]" />
+            <Coins className="w-5 h-5 text-[#072ac8]" />
             <div className="text-left">
               <h3 className="text-sm sm:text-base font-black text-gray-900">Economy & Reward Multipliers</h3>
               <p className="text-xs text-gray-500">Configure daily coin caps, streak multipliers, and referral bonuses</p>
@@ -662,7 +662,7 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
                   type="number"
                   value={maxDailyCoins}
                   onChange={(e) => setMaxDailyCoins(Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#7848f4]"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#072ac8]"
                 />
                 <span className="text-[10px] text-gray-400 mt-0.5 block">Max coins an account can accumulate per 24 hours</span>
               </div>
@@ -674,7 +674,7 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
                   step="0.1"
                   value={streakMultiplier}
                   onChange={(e) => setStreakMultiplier(Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#7848f4]"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#072ac8]"
                 />
                 <span className="text-[10px] text-gray-400 mt-0.5 block">Coin bonus multiplier for daily active check-ins</span>
               </div>
@@ -685,7 +685,7 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
                   type="number"
                   value={referralBonus}
                   onChange={(e) => setReferralBonus(Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#7848f4]"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#072ac8]"
                 />
                 <span className="text-[10px] text-gray-400 mt-0.5 block">Default 500 coins awarded to referrer & referee</span>
               </div>
@@ -696,7 +696,7 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
                 type="button"
                 onClick={handleSaveEconomySettings}
                 disabled={savingSettings}
-                className="px-5 py-2.5 rounded-xl bg-[#7848f4] text-white text-xs font-bold hover:bg-[#6837e3] transition shadow-md shadow-purple-500/20"
+                className="px-5 py-2.5 rounded-xl bg-[#072ac8] text-white text-xs font-bold hover:bg-[#05219e] transition shadow-md shadow-[#072ac8]/20"
               >
                 {savingSettings ? 'Saving to Database…' : 'Save Economy Settings'}
               </button>
@@ -706,13 +706,13 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
       </div>
 
       {/* 5. Live Registered Users */}
-      <div className="bg-white rounded-[28px] border border-[#e5dcfa] shadow-[0_4px_20px_rgba(120,72,244,0.05)] overflow-hidden">
+      <div className="bg-white rounded-[28px] border border-[#bde0fe] shadow-[0_4px_20px_rgba(7,42,200,0.05)] overflow-hidden">
         <button
           onClick={() => toggleSection('users')}
           className="w-full px-6 py-5 sm:p-6 flex items-center justify-between hover:bg-gray-50/70 transition"
         >
           <div className="flex items-center gap-3">
-            <Users className="w-5 h-5 text-[#7848f4]" />
+            <Users className="w-5 h-5 text-[#072ac8]" />
             <div className="text-left">
               <h3 className="text-sm sm:text-base font-black text-gray-900">
                 Registered Users in Database ({allUsers.length})
@@ -767,8 +767,8 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
                           <p className="font-mono text-gray-900 font-bold">{u.email || u.uid.slice(0, 12)}</p>
                           <p className="font-mono text-[10px] text-gray-400">{u.uid}</p>
                         </td>
-                        <td className="py-2.5 font-semibold text-gray-800">{u.displayName || 'PollPe User'}</td>
-                        <td className="py-2.5 font-bold text-[#7848f4]">{u.coinsBalance?.toLocaleString() || 0}</td>
+                        <td className="py-2.5 font-semibold text-gray-800">{u.displayName || 'Paisa Bharo User'}</td>
+                        <td className="py-2.5 font-bold text-[#072ac8]">{u.coinsBalance?.toLocaleString() || 0}</td>
                         <td className="py-2.5 font-semibold text-gray-700">{u.streakDays || 0} days</td>
                         <td className="py-2.5 font-mono text-gray-600">{u.country || 'IN'}</td>
                       </tr>
@@ -788,13 +788,13 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
       </div>
 
       {/* 6. API Endpoint Testing Suite */}
-      <div className="bg-white rounded-[28px] border border-[#e5dcfa] shadow-[0_4px_20px_rgba(120,72,244,0.05)] overflow-hidden">
+      <div className="bg-white rounded-[28px] border border-[#bde0fe] shadow-[0_4px_20px_rgba(7,42,200,0.05)] overflow-hidden">
         <button
           onClick={() => toggleSection('surveys')}
           className="w-full px-6 py-5 sm:p-6 flex items-center justify-between hover:bg-gray-50/70 transition"
         >
           <div className="flex items-center gap-3">
-            <FileText className="w-5 h-5 text-[#7848f4]" />
+            <FileText className="w-5 h-5 text-[#072ac8]" />
             <div className="text-left">
               <h3 className="text-sm sm:text-base font-black text-gray-900">API Endpoint & Webhook Verification</h3>
               <p className="text-xs text-gray-500">Live checks for Cint, AdGem, BitLabs, and Affiliate Deal postbacks</p>
@@ -812,7 +812,7 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
               <button
                 onClick={testAllEndpoints}
                 disabled={isTestingAll}
-                className="px-3.5 py-1.5 rounded-xl bg-[#7848f4] text-white text-xs font-bold flex items-center gap-2 transition cursor-pointer hover:bg-[#6837e3] disabled:opacity-50"
+                className="px-3.5 py-1.5 rounded-xl bg-[#072ac8] text-white text-xs font-bold flex items-center gap-2 transition cursor-pointer hover:bg-[#05219e] disabled:opacity-50"
               >
                 {isTestingAll ? (
                   <>

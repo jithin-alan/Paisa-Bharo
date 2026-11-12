@@ -43,7 +43,7 @@ import { OfflineIndicator } from './components/OfflineIndicator';
 import { getTranslation, SUPPORTED_LANGUAGES } from './services/i18n';
 import { cintAdapter } from './providers/cintAdapter';
 import { CintSurvey } from './providers/types';
-import { PollPeCoin } from './components/Illustrations';
+import { PaisaBharoCoin } from './components/Illustrations';
 import { AdminConfigView } from './views/AdminConfigView';
 import { useIsAdmin } from './hooks/useIsAdmin';
 import { calculateStreakStatus } from './services/streakService';
@@ -241,8 +241,8 @@ const AppContent: React.FC = () => {
   if (systemSettings?.maintenanceMode && !isUserAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f7f8fc] text-[#1e1b2e] px-4">
-        <div className="max-w-md w-full bg-white rounded-3xl border border-[#e5dcfa] p-8 text-center shadow-[0_4px_20px_rgba(120,72,244,0.08)]">
-          <div className="w-16 h-16 rounded-2xl bg-purple-50 text-[#7848f4] flex items-center justify-center mx-auto mb-4 border border-purple-200">
+        <div className="max-w-md w-full bg-white rounded-3xl border border-[#bde0fe] p-8 text-center shadow-[0_4px_20px_rgba(7,42,200,0.08)]">
+          <div className="w-16 h-16 rounded-2xl bg-sky-50 text-[#072ac8] flex items-center justify-center mx-auto mb-4 border border-sky-200">
             <Settings className="w-8 h-8 animate-spin" />
           </div>
           <h2 className="text-2xl font-black mb-2 text-gray-900">Scheduled Maintenance</h2>
@@ -254,7 +254,7 @@ const AppContent: React.FC = () => {
           </div>
           <button
             onClick={() => window.location.reload()}
-            className="w-full py-3 rounded-xl bg-[#7848f4] text-white font-bold hover:bg-[#6837e3] transition cursor-pointer shadow-sm"
+            className="w-full py-3 rounded-xl bg-[#072ac8] text-white font-bold hover:bg-[#05219e] transition cursor-pointer shadow-sm"
           >
             Check Status & Refresh
           </button>
@@ -302,38 +302,37 @@ const AppContent: React.FC = () => {
   const firstLetter = (userDisplayName.charAt(0) || 'J').toUpperCase();
 
   return (
-    <div className="min-h-screen bg-[#f7f8fc] text-[#1e1b2e] flex flex-col font-sans selection:bg-[#7848f4] selection:text-white">
-      {/* Top Navbar matching PollPe exact screenshot */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#eceaf5] px-4 sm:px-8 py-3 transition-colors">
+    <div className="min-h-screen bg-[#f7f8fc] text-[#1e1b2e] flex flex-col font-sans selection:bg-[#072ac8] selection:text-white">
+      {/* Top Navbar */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#d0e8f7] px-4 sm:px-8 py-3 transition-colors">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
           {/* Brand Logo & Name */}
           <div
             onClick={() => setActiveTab('home')}
             className="flex items-center gap-2 cursor-pointer select-none group shrink-0"
           >
-            {/* PollPe Stylized Purple Swirl Emblem */}
-            <div className="w-9 h-9 rounded-full bg-[#7848f4] flex items-center justify-center text-white shadow-sm shadow-purple-500/30 group-hover:scale-105 transition-transform">
-              <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 14.5h-2v-5h2v5zm0-7h-2V7h2v2.5z" opacity="0" />
-                <path d="M8 17V7h4.5c2.48 0 4.5 2.02 4.5 4.5S14.98 16 12.5 16H10v1H8zm2-3h2.5c1.38 0 2.5-1.12 2.5-2.5S13.88 9 12.5 9H10v5z" />
-              </svg>
-            </div>
+            {/* App Icon Logo */}
+            <img
+              src="/logo.png"
+              alt="Paisa Bharo Logo"
+              className="w-9 h-9 rounded-xl object-cover shadow-sm group-hover:scale-105 transition-transform"
+            />
             <div className="flex items-baseline">
               <span className="text-xl font-black tracking-tight text-[#1e1b2e]">
-                Paisa<span className="text-[#7848f4]">Bharo</span>
+                Paisa<span className="text-[#072ac8]">Bharo</span>
               </span>
-              <span className="w-2 h-2 rounded-full bg-[#f59e0b] ml-0.5" />
+              <span className="w-2 h-2 rounded-full bg-[#fb8500] ml-0.5" />
             </div>
           </div>
 
-          {/* Center Navigation Pills (matches screenshot center) */}
-          <div className="hidden md:flex items-center gap-1.5 p-1 bg-[#f0ebfc] rounded-full border border-[#e5dcfa]">
+          {/* Center Navigation Pills */}
+          <div className="hidden md:flex items-center gap-1.5 p-1 bg-[#e6f4fa] rounded-full border border-[#bde0fe]">
             <button
               onClick={() => setActiveTab('home')}
               className={`flex items-center gap-2 px-5 py-2 rounded-full text-xs font-extrabold transition cursor-pointer ${
                 activeTab === 'home'
-                  ? 'bg-[#7848f4] text-white shadow-md shadow-purple-500/30'
-                  : 'text-[#6b7280] hover:text-[#7848f4]'
+                  ? 'bg-[#072ac8] text-white shadow-md shadow-sky-600/30'
+                  : 'text-[#6b7280] hover:text-[#072ac8]'
               }`}
             >
               <Home className="w-4 h-4" />
@@ -344,8 +343,8 @@ const AppContent: React.FC = () => {
               onClick={() => setActiveTab('polls')}
               className={`w-9 h-9 rounded-full flex items-center justify-center transition cursor-pointer ${
                 activeTab === 'polls'
-                  ? 'bg-[#7848f4] text-white shadow-sm'
-                  : 'text-[#6b7280] hover:text-[#7848f4] hover:bg-white/60'
+                  ? 'bg-[#072ac8] text-white shadow-sm'
+                  : 'text-[#6b7280] hover:text-[#072ac8] hover:bg-white/60'
               }`}
               title="Polls & Surveys"
             >
@@ -356,8 +355,8 @@ const AppContent: React.FC = () => {
               onClick={() => setActiveTab('deals')}
               className={`w-9 h-9 rounded-full flex items-center justify-center transition cursor-pointer ${
                 activeTab === 'deals'
-                  ? 'bg-[#7848f4] text-white shadow-sm'
-                  : 'text-[#6b7280] hover:text-[#7848f4] hover:bg-white/60'
+                  ? 'bg-[#072ac8] text-white shadow-sm'
+                  : 'text-[#6b7280] hover:text-[#072ac8] hover:bg-white/60'
               }`}
               title="Deals & Cashback"
             >
@@ -368,8 +367,8 @@ const AppContent: React.FC = () => {
               onClick={() => setActiveTab('cashout')}
               className={`w-9 h-9 rounded-full flex items-center justify-center transition cursor-pointer ${
                 activeTab === 'cashout'
-                  ? 'bg-[#7848f4] text-white shadow-sm'
-                  : 'text-[#6b7280] hover:text-[#7848f4] hover:bg-white/60'
+                  ? 'bg-[#072ac8] text-white shadow-sm'
+                  : 'text-[#6b7280] hover:text-[#072ac8] hover:bg-white/60'
               }`}
               title="Rewards & Cashout"
             >
@@ -377,14 +376,14 @@ const AppContent: React.FC = () => {
             </button>
           </div>
 
-          {/* Right Header Controls (matches screenshot icons) */}
+          {/* Right Header Controls */}
           <div className="flex items-center gap-2 sm:gap-2.5">
             {/* Admin Panel button if admin is viewing user app */}
             {isUserAdmin && (
               <button
                 type="button"
                 onClick={() => setAdminViewMode('admin')}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-100 hover:bg-purple-200 text-[#7848f4] text-xs font-bold transition shadow-sm cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-100 hover:bg-sky-200 text-[#072ac8] text-xs font-bold transition shadow-sm cursor-pointer"
                 title="Return to Admin Panel"
               >
                 <Terminal className="w-3.5 h-3.5" />
@@ -397,7 +396,7 @@ const AppContent: React.FC = () => {
 
             {/* Dark Mode Icon Button */}
             <button
-              className="w-9 h-9 rounded-xl border border-[#e5dcfa] bg-white text-gray-500 hover:text-[#7848f4] hover:border-[#7848f4] flex items-center justify-center transition cursor-pointer shadow-sm"
+              className="w-9 h-9 rounded-xl border border-[#bde0fe] bg-white text-gray-500 hover:text-[#072ac8] hover:border-[#072ac8] flex items-center justify-center transition cursor-pointer shadow-sm"
               title="Toggle Appearance"
             >
               <Moon className="w-4 h-4" />
@@ -409,7 +408,7 @@ const AppContent: React.FC = () => {
               return (
                 <button
                   onClick={() => setActiveTab('polls')}
-                  className="relative w-9 h-9 rounded-xl border border-[#e5dcfa] bg-white text-gray-400 hover:text-orange-500 flex items-center justify-center transition cursor-pointer shadow-sm"
+                  className="relative w-9 h-9 rounded-xl border border-[#bde0fe] bg-white text-gray-400 hover:text-[#fb8500] flex items-center justify-center transition cursor-pointer shadow-sm"
                   title={
                     streakStatus.isStreakBroken
                       ? 'Streak expired (missed yesterday) - check in to restart'
@@ -418,12 +417,12 @@ const AppContent: React.FC = () => {
                 >
                   <Flame
                     className={`w-4 h-4 ${
-                      streakStatus.effectiveStreak > 0 ? 'text-amber-500 fill-amber-500' : 'text-gray-400'
+                      streakStatus.effectiveStreak > 0 ? 'text-[#fb8500] fill-[#fb8500]' : 'text-gray-400'
                     }`}
                   />
                   <span
                     className={`absolute -top-1.5 -right-1.5 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-sm ${
-                      streakStatus.isStreakBroken ? 'bg-amber-500' : 'bg-[#7848f4]'
+                      streakStatus.isStreakBroken ? 'bg-[#fb8500]' : 'bg-[#072ac8]'
                     }`}
                   >
                     {streakStatus.effectiveStreak}
@@ -433,14 +432,14 @@ const AppContent: React.FC = () => {
             })()}
 
             {/* XP Badge */}
-            <div className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-[#e5dcfa] bg-white text-xs font-bold text-[#7848f4] shadow-sm">
+            <div className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-[#bde0fe] bg-white text-xs font-bold text-[#072ac8] shadow-sm">
               <Award className="w-3.5 h-3.5" />
               <span>{Math.floor((user?.coinsBalance ?? 0) / 10)} XP</span>
             </div>
 
             {/* Notification Bell */}
             <button
-              className="w-9 h-9 rounded-xl border border-[#e5dcfa] bg-white text-gray-500 hover:text-[#7848f4] flex items-center justify-center transition cursor-pointer shadow-sm"
+              className="w-9 h-9 rounded-xl border border-[#bde0fe] bg-white text-gray-500 hover:text-[#072ac8] flex items-center justify-center transition cursor-pointer shadow-sm"
               title="Notifications"
             >
               <Bell className="w-4 h-4" />
@@ -450,14 +449,14 @@ const AppContent: React.FC = () => {
             <div className="relative">
               <button
                 onClick={() => setShowLangMenu(!showLangMenu)}
-                className="w-9 h-9 rounded-xl border border-[#e5dcfa] bg-white text-xs font-black text-gray-700 flex items-center justify-center hover:border-[#7848f4] transition shadow-sm cursor-pointer"
+                className="w-9 h-9 rounded-xl border border-[#bde0fe] bg-white text-xs font-black text-gray-700 flex items-center justify-center hover:border-[#072ac8] transition shadow-sm cursor-pointer"
                 title="Language"
               >
                 {SUPPORTED_LANGUAGES.find(l => l.code === selectedLanguage)?.flag || '🌐'}
               </button>
 
               {showLangMenu && (
-                <div className="absolute right-0 mt-2 w-44 rounded-2xl bg-white border border-[#e5dcfa] shadow-xl py-2 z-50 text-xs">
+                <div className="absolute right-0 mt-2 w-44 rounded-2xl bg-white border border-[#bde0fe] shadow-xl py-2 z-50 text-xs">
                   {SUPPORTED_LANGUAGES.map((lang, idx) => (
                     <button
                       key={`app-lang-${lang.code}-${idx}`}
@@ -465,8 +464,8 @@ const AppContent: React.FC = () => {
                         setLanguage(lang.code);
                         setShowLangMenu(false);
                       }}
-                      className={`w-full px-4 py-2 text-left flex items-center justify-between hover:bg-[#f0ebfc] transition cursor-pointer ${
-                        selectedLanguage === lang.code ? 'text-[#7848f4] font-black bg-[#f0ebfc]' : 'text-gray-700'
+                      className={`w-full px-4 py-2 text-left flex items-center justify-between hover:bg-[#e6f4fa] transition cursor-pointer ${
+                        selectedLanguage === lang.code ? 'text-[#072ac8] font-black bg-[#e6f4fa]' : 'text-gray-700'
                       }`}
                     >
                       <span className="flex items-center gap-2">
@@ -480,11 +479,11 @@ const AppContent: React.FC = () => {
               )}
             </div>
 
-            {/* User Profile Pill (matches screenshot: Dark circle avatar + Hi, Name + chevron) */}
+            {/* User Profile Pill */}
             <div className="relative">
               <button
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
-                className="flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-full border border-[#e5dcfa] bg-white hover:border-[#7848f4] transition cursor-pointer shadow-sm"
+                className="flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-full border border-[#bde0fe] bg-white hover:border-[#072ac8] transition cursor-pointer shadow-sm"
               >
                 <div className="w-7 h-7 rounded-full bg-[#1e1b2e] text-white font-bold text-xs flex items-center justify-center shrink-0">
                   {firstLetter}
@@ -496,7 +495,7 @@ const AppContent: React.FC = () => {
               </button>
 
               {showProfileMenu && (
-                <div className="absolute right-0 mt-2 w-48 rounded-2xl bg-white border border-[#e5dcfa] shadow-2xl py-2 z-50 text-xs">
+                <div className="absolute right-0 mt-2 w-48 rounded-2xl bg-white border border-[#bde0fe] shadow-2xl py-2 z-50 text-xs">
                   <div className="px-4 py-2 border-b border-gray-100">
                     <p className="font-bold text-gray-900 truncate">{userDisplayName}</p>
                     <p className="text-[11px] text-gray-500 truncate">{user?.email || firebaseUser?.email || ''}</p>
@@ -507,7 +506,7 @@ const AppContent: React.FC = () => {
                         setAdminViewMode('admin');
                         setShowProfileMenu(false);
                       }}
-                      className="w-full px-4 py-2 text-left text-[#7848f4] hover:bg-[#f0ebfc] transition font-bold flex items-center gap-2"
+                      className="w-full px-4 py-2 text-left text-[#072ac8] hover:bg-[#e6f4fa] transition font-bold flex items-center gap-2"
                     >
                       <Terminal className="w-3.5 h-3.5" />
                       <span>Admin Console</span>
@@ -518,7 +517,7 @@ const AppContent: React.FC = () => {
                       setActiveTab('settings');
                       setShowProfileMenu(false);
                     }}
-                    className="w-full px-4 py-2 text-left text-gray-700 hover:bg-[#f0ebfc] hover:text-[#7848f4] transition font-medium"
+                    className="w-full px-4 py-2 text-left text-gray-700 hover:bg-[#e6f4fa] hover:text-[#072ac8] transition font-medium"
                   >
                     Account Settings
                   </button>
@@ -527,7 +526,7 @@ const AppContent: React.FC = () => {
                       setActiveTab('refer');
                       setShowProfileMenu(false);
                     }}
-                    className="w-full px-4 py-2 text-left text-gray-700 hover:bg-[#f0ebfc] hover:text-[#7848f4] transition font-medium"
+                    className="w-full px-4 py-2 text-left text-gray-700 hover:bg-[#e6f4fa] hover:text-[#072ac8] transition font-medium"
                   >
                     Refer & Earn (500 🪙)
                   </button>
@@ -536,7 +535,7 @@ const AppContent: React.FC = () => {
                       setActiveTab('leaderboard');
                       setShowProfileMenu(false);
                     }}
-                    className="w-full px-4 py-2 text-left text-gray-700 hover:bg-[#f0ebfc] hover:text-[#7848f4] transition font-medium"
+                    className="w-full px-4 py-2 text-left text-gray-700 hover:bg-[#e6f4fa] hover:text-[#072ac8] transition font-medium"
                   >
                     Leaderboard
                   </button>
@@ -546,7 +545,7 @@ const AppContent: React.FC = () => {
                       setActiveTab('deals');
                       setShowProfileMenu(false);
                     }}
-                    className="w-full px-4 py-2 text-left text-gray-700 hover:bg-[#f0ebfc] hover:text-[#7848f4] transition font-medium flex items-center justify-between"
+                    className="w-full px-4 py-2 text-left text-gray-700 hover:bg-[#e6f4fa] hover:text-[#072ac8] transition font-medium flex items-center justify-between"
                   >
                     <span>🛍️ Deals & Cashback</span>
                     <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded">New</span>
@@ -556,17 +555,17 @@ const AppContent: React.FC = () => {
                       handleOpenOfferwall();
                       setShowProfileMenu(false);
                     }}
-                    className="w-full px-4 py-2 text-left text-gray-700 hover:bg-[#f0ebfc] hover:text-[#7848f4] transition font-medium flex items-center justify-between"
+                    className="w-full px-4 py-2 text-left text-gray-700 hover:bg-[#e6f4fa] hover:text-[#072ac8] transition font-medium flex items-center justify-between"
                   >
                     <span>🎮 Offerwall</span>
-                    <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded">AdGem/BL</span>
+                    <span className="text-[10px] bg-[#fff0db] text-[#b05d00] font-bold px-1.5 py-0.5 rounded">AdGem/BL</span>
                   </button>
                   <button
                     onClick={() => {
                       setIsWebhookTesterOpen(true);
                       setShowProfileMenu(false);
                     }}
-                    className="w-full px-4 py-2 text-left text-gray-700 hover:bg-[#f0ebfc] hover:text-[#7848f4] transition font-medium flex items-center justify-between"
+                    className="w-full px-4 py-2 text-left text-gray-700 hover:bg-[#e6f4fa] hover:text-[#072ac8] transition font-medium flex items-center justify-between"
                   >
                     <span>⚡ S2S Webhook Tester</span>
                   </button>
@@ -590,9 +589,9 @@ const AppContent: React.FC = () => {
 
       {/* Floating Toast Notification for Coin Earnings & Provider Updates */}
       {toast && (
-        <div className="fixed top-20 right-4 z-50 max-w-sm rounded-2xl bg-white border border-[#e5dcfa] p-4 shadow-[0_10px_30px_rgba(120,72,244,0.2)] flex items-center justify-between gap-3 animate-bounce-in">
+        <div className="fixed top-20 right-4 z-50 max-w-sm rounded-2xl bg-white border border-[#bde0fe] p-4 shadow-[0_10px_30px_rgba(7,42,200,0.2)] flex items-center justify-between gap-3 animate-bounce-in">
           <div className="flex items-center gap-3">
-            <PollPeCoin className="w-6 h-6 shrink-0" />
+            <PaisaBharoCoin className="w-6 h-6 shrink-0" />
             <div>
               <p className="text-xs font-black text-gray-900">{toast.text}</p>
               <p className="text-[10px] text-gray-500">Live balance updated</p>
@@ -652,7 +651,7 @@ const AppContent: React.FC = () => {
       <OfflineIndicator language={selectedLanguage} />
 
       {/* Bottom Navigation Bar for Mobile and Responsive PWA */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-xl border-t border-[#eceaf5] py-2 px-2 safe-bottom shadow-lg">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-xl border-t border-[#d0e8f7] py-2 px-2 safe-bottom shadow-lg">
         <div className="max-w-md mx-auto flex items-center justify-around">
           {[
             { id: 'home', label: 'Home', icon: Home },
@@ -672,21 +671,21 @@ const AppContent: React.FC = () => {
                 onClick={() => setActiveTab(item.id as TabType)}
                 className={`relative flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-all cursor-pointer ${
                   isActive
-                    ? 'text-[#7848f4] scale-105'
+                    ? 'text-[#072ac8] scale-105'
                     : 'text-gray-400 hover:text-gray-700'
                 }`}
               >
                 <Icon className={`w-4 h-4 ${isActive ? 'stroke-[2.5]' : 'stroke-[1.8]'}`} />
                 <span
                   className={`text-[8px] mt-0.5 font-bold transition-colors line-clamp-1 ${
-                    isActive ? 'text-[#7848f4]' : 'text-gray-400'
+                    isActive ? 'text-[#072ac8]' : 'text-gray-400'
                   }`}
                 >
                   {item.label}
                 </span>
 
                 {isActive && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#7848f4] mt-0.5" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#072ac8] mt-0.5" />
                 )}
               </button>
             );

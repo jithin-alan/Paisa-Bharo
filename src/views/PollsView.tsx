@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext';
 import { getTranslation } from '../services/i18n';
 import { formatCoinsValue } from '../services/currencies';
 import { ScratchCardModal } from '../components/ScratchCardModal';
-import { PollPeCoin } from '../components/Illustrations';
+import { PaisaBharoCoin } from '../components/Illustrations';
 import { calculateStreakStatus, DAILY_REWARDS_MAP } from '../services/streakService';
 
 export const PollsView: React.FC = () => {
@@ -50,13 +50,13 @@ export const PollsView: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Daily Streak & Mystery Card Quick Access in PollPe Light Clean Theme */}
+      {/* Daily Streak & Mystery Card Quick Access in Ocean Blue & Tangerine Theme */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
         {/* Streak Card */}
-        <div className="sm:col-span-2 relative overflow-hidden rounded-[26px] bg-white border border-[#e5dcfa] p-5 sm:p-6 shadow-[0_4px_20px_rgba(120,72,244,0.05)] text-gray-900">
+        <div className="sm:col-span-2 relative overflow-hidden rounded-[26px] bg-white border border-[#bde0fe] p-5 sm:p-6 shadow-[0_4px_20px_rgba(7,42,200,0.05)] text-gray-900">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-[#f0ebfc] flex items-center justify-center text-[#7848f4]">
+              <div className="w-11 h-11 rounded-2xl bg-[#fff0db] flex items-center justify-center text-[#fb8500]">
                 <Flame className="w-6 h-6 animate-pulse" />
               </div>
               <div>
@@ -74,7 +74,7 @@ export const PollsView: React.FC = () => {
                         ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
                         : isStreakBroken
                         ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                        : 'bg-[#f0ebfc] text-[#7848f4]'
+                        : 'bg-[#e6f4fa] text-[#072ac8]'
                     }`}
                   >
                     {isCheckedInToday
@@ -102,7 +102,7 @@ export const PollsView: React.FC = () => {
               className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 shadow-sm ${
                 isCheckedInToday
                   ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
-                  : 'bg-[#7848f4] hover:bg-[#6837e3] text-white cursor-pointer active:scale-95 shadow-[0_4px_12px_rgba(120,72,244,0.3)]'
+                  : 'bg-[#fb8500] hover:bg-[#d66e00] text-white cursor-pointer active:scale-95 shadow-[0_4px_12px_rgba(251,133,0,0.3)]'
               }`}
             >
               <Gift className="w-3.5 h-3.5" />
@@ -116,7 +116,7 @@ export const PollsView: React.FC = () => {
             </button>
           </div>
 
-          {/* 7-Day Dots in PollPe Palette */}
+          {/* 7-Day Dots in Ocean Blue Palette */}
           <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between gap-1 text-center">
             {[1, 2, 3, 4, 5, 6, 7].map((day) => {
               const isCompleted = isCheckedInToday
@@ -131,9 +131,9 @@ export const PollsView: React.FC = () => {
                   <div
                     className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-xs font-black transition-all ${
                       isCompleted
-                        ? 'bg-[#7848f4] text-white shadow-sm shadow-purple-500/20'
+                        ? 'bg-[#072ac8] text-white shadow-sm shadow-[#072ac8]/20'
                         : isTargetToday
-                        ? 'bg-[#f0ebfc] border-2 border-[#7848f4] text-[#7848f4] shadow-sm animate-pulse'
+                        ? 'bg-[#e6f4fa] border-2 border-[#072ac8] text-[#072ac8] shadow-sm animate-pulse'
                         : 'bg-gray-50 text-gray-400 border border-gray-200'
                     }`}
                   >
@@ -148,14 +148,14 @@ export const PollsView: React.FC = () => {
         {/* Lucky Scratch Card Teaser */}
         <div
           onClick={() => setShowScratchModal(true)}
-          className="relative overflow-hidden rounded-[26px] bg-white border border-[#e5dcfa] p-5 sm:p-6 shadow-[0_4px_20px_rgba(120,72,244,0.05)] text-gray-900 flex flex-col justify-between cursor-pointer hover:border-[#7848f4] transition group"
+          className="relative overflow-hidden rounded-[26px] bg-white border border-[#bde0fe] p-5 sm:p-6 shadow-[0_4px_20px_rgba(7,42,200,0.05)] text-gray-900 flex flex-col justify-between cursor-pointer hover:border-[#072ac8] transition group"
         >
           <div className="flex items-start justify-between">
-            <div className="w-11 h-11 rounded-2xl bg-[#fef3c7] flex items-center justify-center text-[#d97706]">
+            <div className="w-11 h-11 rounded-2xl bg-[#fff0db] flex items-center justify-center text-[#fb8500]">
               <Sparkles className="w-6 h-6 group-hover:rotate-12 transition-transform" />
             </div>
             {scratchCardAvailable ? (
-              <span className="text-[10px] bg-[#fef3c7] text-[#b45309] border border-[#fde68a] px-2.5 py-0.5 rounded-full font-black animate-pulse">
+              <span className="text-[10px] bg-[#fff0db] text-[#b05d00] border border-[#ffd099] px-2.5 py-0.5 rounded-full font-black animate-pulse">
                 READY
               </span>
             ) : (
@@ -170,7 +170,7 @@ export const PollsView: React.FC = () => {
               Scratch & reveal up to +120 bonus Paisa Coins!
             </p>
           </div>
-          <div className="mt-3 text-xs font-bold text-[#7848f4] flex items-center gap-1">
+          <div className="mt-3 text-xs font-bold text-[#072ac8] flex items-center gap-1">
             <span>{getTranslation(selectedLanguage, 'scratchNow')}</span>
             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
           </div>
@@ -183,8 +183,8 @@ export const PollsView: React.FC = () => {
           <div>
             <h2 className="text-base sm:text-lg font-black text-gray-900 flex items-center gap-2">
               <span>{getTranslation(selectedLanguage, 'marketSurveys')}</span>
-              <span className="text-[10px] bg-[#f0ebfc] text-[#7848f4] font-bold px-2 py-0.5 rounded-full">
-                PollPe Research
+              <span className="text-[10px] bg-[#e6f4fa] text-[#072ac8] font-bold px-2 py-0.5 rounded-full">
+                Research
               </span>
             </h2>
             <p className="text-xs text-gray-500">{getTranslation(selectedLanguage, 'marketSurveysDesc')}</p>
@@ -198,12 +198,12 @@ export const PollsView: React.FC = () => {
               className={`rounded-[24px] border p-5 flex flex-col justify-between transition-all ${
                 survey.completed
                   ? 'bg-gray-50 border-gray-200 opacity-60'
-                  : 'bg-white border-[#e5dcfa] hover:border-[#7848f4] shadow-[0_4px_20px_rgba(120,72,244,0.05)]'
+                  : 'bg-white border-[#bde0fe] hover:border-[#072ac8] shadow-[0_4px_20px_rgba(7,42,200,0.05)]'
               }`}
             >
               <div>
                 <div className="flex items-center justify-between mb-2.5">
-                  <span className="text-[11px] font-bold text-[#7848f4] bg-[#f0ebfc] px-2.5 py-0.5 rounded-md">
+                  <span className="text-[11px] font-bold text-[#072ac8] bg-[#e6f4fa] px-2.5 py-0.5 rounded-md">
                     {survey.category}
                   </span>
                   <div className="flex items-center gap-1 text-[11px] text-gray-400">
@@ -221,21 +221,21 @@ export const PollsView: React.FC = () => {
 
               <div className="mt-5 pt-3.5 border-t border-gray-100 flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <PollPeCoin className="w-4 h-4 shrink-0" />
+                  <PaisaBharoCoin className="w-4 h-4 shrink-0" />
                   <span className="text-sm font-black text-gray-900">+{survey.rewardCoins}</span>
                   <span className="text-[10px] text-gray-400">
                     ({formatCoinsValue(survey.rewardCoins, selectedCurrency)})
                   </span>
                 </div>
                 {survey.completed ? (
-                  <span className="text-xs font-semibold text-[#7848f4] flex items-center gap-1">
+                  <span className="text-xs font-semibold text-[#072ac8] flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>{getTranslation(selectedLanguage, 'completed')}</span>
                   </span>
                 ) : (
                   <button
                     onClick={() => setActiveSurvey(survey)}
-                    className="px-4 py-2 rounded-xl bg-[#7848f4] hover:bg-[#6837e3] text-white font-extrabold text-xs transition cursor-pointer active:scale-95 shadow-[0_4px_12px_rgba(120,72,244,0.25)]"
+                    className="px-4 py-2 rounded-xl bg-[#072ac8] hover:bg-[#05219e] text-white font-extrabold text-xs transition cursor-pointer active:scale-95 shadow-[0_4px_12px_rgba(7,42,200,0.25)]"
                   >
                     {getTranslation(selectedLanguage, 'startSurvey')}
                   </button>
@@ -252,14 +252,14 @@ export const PollsView: React.FC = () => {
           <div>
             <h2 className="text-base sm:text-lg font-black text-gray-900 flex items-center gap-2">
               <span>{getTranslation(selectedLanguage, 'flashPolls')}</span>
-              <span className="text-[10px] bg-[#f0ebfc] text-[#7848f4] font-bold px-2 py-0.5 rounded-full">
+              <span className="text-[10px] bg-[#e6f4fa] text-[#072ac8] font-bold px-2 py-0.5 rounded-full">
                 5 Seconds
               </span>
             </h2>
             <p className="text-xs text-gray-500">{getTranslation(selectedLanguage, 'flashPollsDesc')}</p>
           </div>
 
-          {/* Categories in PollPe purple */}
+          {/* Categories in Ocean Blue */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
             {categories.map((cat, idx) => (
               <button
@@ -267,8 +267,8 @@ export const PollsView: React.FC = () => {
                 onClick={() => setSelectedCategory(cat)}
                 className={`px-3.5 py-1.5 rounded-full text-xs font-bold shrink-0 transition cursor-pointer ${
                   selectedCategory === cat
-                    ? 'bg-[#7848f4] text-white shadow-sm'
-                    : 'bg-white hover:bg-[#f0ebfc] text-gray-600 border border-[#e5dcfa]'
+                    ? 'bg-[#072ac8] text-white shadow-sm'
+                    : 'bg-white hover:bg-[#e6f4fa] text-gray-600 border border-[#bde0fe]'
                 }`}
               >
                 {cat}
@@ -285,12 +285,12 @@ export const PollsView: React.FC = () => {
             return (
               <div
                 key={`poll-${poll.id}-${idx}`}
-                className="rounded-[26px] bg-white border border-[#e5dcfa] hover:border-[#7848f4]/60 p-5 sm:p-6 shadow-[0_4px_20px_rgba(120,72,244,0.05)] transition-all space-y-4"
+                className="rounded-[26px] bg-white border border-[#bde0fe] hover:border-[#072ac8]/60 p-5 sm:p-6 shadow-[0_4px_20px_rgba(7,42,200,0.05)] transition-all space-y-4"
               >
                 {/* Poll Card Header */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold text-[#7848f4] bg-[#f0ebfc] px-2.5 py-0.5 rounded-lg">
+                    <span className="text-[11px] font-bold text-[#072ac8] bg-[#e6f4fa] px-2.5 py-0.5 rounded-lg">
                       {poll.category}
                     </span>
                     {poll.country && (
@@ -299,8 +299,8 @@ export const PollsView: React.FC = () => {
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs font-black text-gray-900 bg-[#fef3c7] border border-[#fde68a] px-2.5 py-1 rounded-xl">
-                    <PollPeCoin className="w-4 h-4" />
+                  <div className="flex items-center gap-1.5 text-xs font-black text-gray-900 bg-[#fff0db] border border-[#ffd099] px-2.5 py-1 rounded-xl">
+                    <PaisaBharoCoin className="w-4 h-4" />
                     <span>+{poll.rewardCoins}</span>
                   </div>
                 </div>
@@ -324,17 +324,17 @@ export const PollsView: React.FC = () => {
                         className={`relative w-full text-left p-3.5 sm:p-4 rounded-2xl border transition-all overflow-hidden flex items-center justify-between select-none ${
                           hasVoted
                             ? isSelected
-                              ? 'bg-[#f0ebfc] border-[#7848f4] text-[#7848f4] font-extrabold shadow-sm'
+                              ? 'bg-[#e6f4fa] border-[#072ac8] text-[#072ac8] font-extrabold shadow-sm'
                               : 'bg-gray-50 border-gray-200 text-gray-600'
-                            : 'bg-white hover:bg-[#faf7ff] hover:border-[#7848f4] border-gray-200 text-gray-800 cursor-pointer active:scale-[0.99]'
+                            : 'bg-white hover:bg-[#e6f4fa]/30 hover:border-[#072ac8] border-gray-200 text-gray-800 cursor-pointer active:scale-[0.99]'
                         }`}
                       >
-                        {/* Percentage fill bar with PollPe purple gradient */}
+                        {/* Percentage fill bar with Ocean Blue gradient */}
                         {hasVoted && (
                           <div
                             className={`absolute top-0 bottom-0 left-0 transition-all duration-700 ${
                               isSelected
-                                ? 'bg-[#7848f4]/15 border-r-2 border-[#7848f4]'
+                                ? 'bg-[#072ac8]/15 border-r-2 border-[#072ac8]'
                                 : 'bg-gray-200/50'
                             }`}
                             style={{ width: `${votePercent}%` }}
@@ -346,7 +346,7 @@ export const PollsView: React.FC = () => {
                           <span
                             className={`w-6 h-6 rounded-full border text-xs font-black flex items-center justify-center shrink-0 ${
                               isSelected
-                                ? 'bg-[#7848f4] border-[#7848f4] text-white shadow-sm'
+                                ? 'bg-[#072ac8] border-[#072ac8] text-white shadow-sm'
                                 : 'border-gray-300 text-gray-500 bg-white'
                             }`}
                           >
@@ -357,7 +357,7 @@ export const PollsView: React.FC = () => {
 
                         {/* Percentage value */}
                         {hasVoted && (
-                          <span className="relative z-10 text-xs font-black text-[#7848f4] shrink-0 ml-2">
+                          <span className="relative z-10 text-xs font-black text-[#072ac8] shrink-0 ml-2">
                             {votePercent}%
                           </span>
                         )}
@@ -369,7 +369,7 @@ export const PollsView: React.FC = () => {
                 {/* Poll Footer details */}
                 <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-400">
                   <div className="flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5 text-[#7848f4]" />
+                    <Users className="w-3.5 h-3.5 text-[#072ac8]" />
                     <span>{poll.totalVotes.toLocaleString()} {getTranslation(selectedLanguage, 'totalVotes')}</span>
                   </div>
                   <div className="flex items-center gap-1 text-gray-400">

@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext';
 import { getTranslation, SUPPORTED_LANGUAGES } from '../services/i18n';
 import { SUPPORTED_CURRENCIES, formatCoinsValue } from '../services/currencies';
 import { PWAInstallButton } from '../components/PWAInstallButton';
-import { PollPeCoin } from '../components/Illustrations';
+import { PaisaBharoCoin } from '../components/Illustrations';
 import { LegalComplianceModal, LegalTabType } from '../components/LegalComplianceModal';
 
 export const SettingsView: React.FC = () => {
@@ -35,10 +35,10 @@ export const SettingsView: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12 text-gray-900">
-      {/* User Profile Card in PollPe Clean Theme */}
-      <div className="rounded-[28px] bg-white border border-[#e5dcfa] p-5 sm:p-6 shadow-[0_4px_20px_rgba(120,72,244,0.05)] space-y-4">
+      {/* User Profile Card in Ocean Blue Theme */}
+      <div className="rounded-[28px] bg-white border border-[#bde0fe] p-5 sm:p-6 shadow-[0_4px_20px_rgba(7,42,200,0.05)] space-y-4">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-[#1e1b2e] text-white font-black text-2xl flex items-center justify-center border-2 border-[#7848f4] shadow-md">
+          <div className="w-16 h-16 rounded-2xl bg-[#002f4b] text-white font-black text-2xl flex items-center justify-center border-2 border-[#072ac8] shadow-md">
             {(user.displayName?.charAt(0) || 'J').toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
@@ -47,7 +47,7 @@ export const SettingsView: React.FC = () => {
                 {firebaseUser?.displayName || user.displayName}
               </h3>
               {firebaseUser && (
-                <span className="text-[10px] bg-[#f0ebfc] text-[#7848f4] font-bold px-2 py-0.5 rounded-full">
+                <span className="text-[10px] bg-[#e6f4fa] text-[#072ac8] font-bold px-2 py-0.5 rounded-full">
                   Verified
                 </span>
               )}
@@ -56,7 +56,7 @@ export const SettingsView: React.FC = () => {
               {firebaseUser?.email || user.email}
             </p>
             <div className="flex items-center gap-2 mt-2">
-              <PollPeCoin className="w-4 h-4" />
+              <PaisaBharoCoin className="w-4 h-4" />
               <span className="text-xs font-black text-gray-900">
                 {coinsBalance.toLocaleString()} Coins
               </span>
@@ -81,7 +81,7 @@ export const SettingsView: React.FC = () => {
             <button
               onClick={loginWithGoogle}
               disabled={googleAuthLoading}
-              className="flex-1 py-3 rounded-xl bg-[#7848f4] hover:bg-[#6837e3] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(120,72,244,0.3)] transition cursor-pointer active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="flex-1 py-3 rounded-xl bg-[#072ac8] hover:bg-[#05219e] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(7,42,200,0.3)] transition cursor-pointer active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {googleAuthLoading ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -105,9 +105,9 @@ export const SettingsView: React.FC = () => {
       </div>
 
       {/* Language Selector */}
-      <div className="rounded-[28px] bg-white border border-[#e5dcfa] p-5 sm:p-6 shadow-[0_4px_20px_rgba(120,72,244,0.05)] space-y-3">
+      <div className="rounded-[28px] bg-white border border-[#bde0fe] p-5 sm:p-6 shadow-[0_4px_20px_rgba(7,42,200,0.05)] space-y-3">
         <div className="flex items-center gap-2">
-          <Globe className="w-5 h-5 text-[#7848f4]" />
+          <Globe className="w-5 h-5 text-[#072ac8]" />
           <h4 className="font-extrabold text-sm text-gray-900">App Language / भाषा / Idioma</h4>
         </div>
         <p className="text-xs text-gray-500">
@@ -120,7 +120,7 @@ export const SettingsView: React.FC = () => {
               onClick={() => setLanguage(lang.code)}
               className={`p-3.5 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer ${
                 selectedLanguage === lang.code
-                  ? 'bg-[#f0ebfc] border-[#7848f4] text-[#7848f4] font-black shadow-sm'
+                  ? 'bg-[#e6f4fa] border-[#072ac8] text-[#072ac8] font-black shadow-sm'
                   : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
               }`}
             >
@@ -128,16 +128,16 @@ export const SettingsView: React.FC = () => {
                 <span className="text-sm mr-2">{lang.flag}</span>
                 <span className="text-xs font-bold">{lang.nativeName}</span>
               </div>
-              {selectedLanguage === lang.code && <CheckCircle2 className="w-4 h-4 text-[#7848f4]" />}
+              {selectedLanguage === lang.code && <CheckCircle2 className="w-4 h-4 text-[#072ac8]" />}
             </button>
           ))}
         </div>
       </div>
 
       {/* Currency Selector */}
-      <div className="rounded-[28px] bg-white border border-[#e5dcfa] p-5 sm:p-6 shadow-[0_4px_20px_rgba(120,72,244,0.05)] space-y-3">
+      <div className="rounded-[28px] bg-white border border-[#bde0fe] p-5 sm:p-6 shadow-[0_4px_20px_rgba(7,42,200,0.05)] space-y-3">
         <div className="flex items-center gap-2">
-          <DollarSign className="w-5 h-5 text-[#7848f4]" />
+          <DollarSign className="w-5 h-5 text-[#072ac8]" />
           <h4 className="font-extrabold text-sm text-gray-900">Payout Currency & Region</h4>
         </div>
         <p className="text-xs text-gray-500">
@@ -153,7 +153,7 @@ export const SettingsView: React.FC = () => {
                 onClick={() => setCurrency(code)}
                 className={`p-3.5 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer ${
                   isSelected
-                    ? 'bg-[#f0ebfc] border-[#7848f4] text-[#7848f4] font-black shadow-sm'
+                    ? 'bg-[#e6f4fa] border-[#072ac8] text-[#072ac8] font-black shadow-sm'
                     : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
                 }`}
               >
@@ -161,7 +161,7 @@ export const SettingsView: React.FC = () => {
                   <span className="text-sm mr-2">{curr.flag}</span>
                   <span className="text-xs font-bold">{curr.code} ({curr.symbol})</span>
                 </div>
-                {isSelected && <CheckCircle2 className="w-4 h-4 text-[#7848f4]" />}
+                {isSelected && <CheckCircle2 className="w-4 h-4 text-[#072ac8]" />}
               </button>
             );
           })}
@@ -169,13 +169,13 @@ export const SettingsView: React.FC = () => {
       </div>
 
       {/* Legal, Policies & Customer Support */}
-      <div className="rounded-[28px] bg-white border border-[#e5dcfa] p-5 sm:p-6 shadow-[0_4px_20px_rgba(120,72,244,0.05)] space-y-4">
+      <div className="rounded-[28px] bg-white border border-[#bde0fe] p-5 sm:p-6 shadow-[0_4px_20px_rgba(7,42,200,0.05)] space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-[#7848f4]" />
+            <ShieldCheck className="w-5 h-5 text-[#072ac8]" />
             <h4 className="font-extrabold text-sm text-gray-900">Legal, Policies & Support Center</h4>
           </div>
-          <span className="text-[10px] bg-[#f0ebfc] text-[#7848f4] font-extrabold px-2.5 py-0.5 rounded-full">
+          <span className="text-[10px] bg-[#e6f4fa] text-[#072ac8] font-extrabold px-2.5 py-0.5 rounded-full">
             Verified Compliance
           </span>
         </div>
@@ -187,44 +187,44 @@ export const SettingsView: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <button
             onClick={() => openLegalModal('privacy')}
-            className="p-3.5 rounded-2xl border border-gray-200 hover:border-[#7848f4] hover:bg-[#faf7ff] text-left transition flex items-center gap-3 cursor-pointer group"
+            className="p-3.5 rounded-2xl border border-gray-200 hover:border-[#072ac8] hover:bg-[#e6f4fa]/30 text-left transition flex items-center gap-3 cursor-pointer group"
           >
-            <ShieldCheck className="w-4 h-4 text-[#7848f4] shrink-0" />
+            <ShieldCheck className="w-4 h-4 text-[#072ac8] shrink-0" />
             <div className="min-w-0">
-              <span className="text-xs font-black text-gray-900 block group-hover:text-[#7848f4]">Privacy Policy & Data Rights</span>
+              <span className="text-xs font-black text-gray-900 block group-hover:text-[#072ac8]">Privacy Policy & Data Rights</span>
               <span className="text-[10px] text-gray-500 block truncate">Data collection, Cint/AdGem/BitLabs disclosures</span>
             </div>
           </button>
 
           <button
             onClick={() => openLegalModal('terms')}
-            className="p-3.5 rounded-2xl border border-gray-200 hover:border-[#7848f4] hover:bg-[#faf7ff] text-left transition flex items-center gap-3 cursor-pointer group"
+            className="p-3.5 rounded-2xl border border-gray-200 hover:border-[#072ac8] hover:bg-[#e6f4fa]/30 text-left transition flex items-center gap-3 cursor-pointer group"
           >
-            <FileText className="w-4 h-4 text-[#7848f4] shrink-0" />
+            <FileText className="w-4 h-4 text-[#072ac8] shrink-0" />
             <div className="min-w-0">
-              <span className="text-xs font-black text-gray-900 block group-hover:text-[#7848f4]">Terms & Conditions</span>
+              <span className="text-xs font-black text-gray-900 block group-hover:text-[#072ac8]">Terms & Conditions</span>
               <span className="text-[10px] text-gray-500 block truncate">Usage rules & zero-tolerance fraud policy</span>
             </div>
           </button>
 
           <button
             onClick={() => openLegalModal('rewards')}
-            className="p-3.5 rounded-2xl border border-gray-200 hover:border-[#7848f4] hover:bg-[#faf7ff] text-left transition flex items-center gap-3 cursor-pointer group"
+            className="p-3.5 rounded-2xl border border-gray-200 hover:border-[#072ac8] hover:bg-[#e6f4fa]/30 text-left transition flex items-center gap-3 cursor-pointer group"
           >
-            <Coins className="w-4 h-4 text-[#7848f4] shrink-0" />
+            <Coins className="w-4 h-4 text-[#072ac8] shrink-0" />
             <div className="min-w-0">
-              <span className="text-xs font-black text-gray-900 block group-hover:text-[#7848f4]">Reward & Conversion Rules</span>
+              <span className="text-xs font-black text-gray-900 block group-hover:text-[#072ac8]">Reward & Conversion Rules</span>
               <span className="text-[10px] text-gray-500 block truncate">1,000 Coins = $1.00 USD / ₹80 INR rate breakdown</span>
             </div>
           </button>
 
           <button
             onClick={() => openLegalModal('support')}
-            className="p-3.5 rounded-2xl border border-gray-200 hover:border-[#7848f4] hover:bg-[#faf7ff] text-left transition flex items-center gap-3 cursor-pointer group"
+            className="p-3.5 rounded-2xl border border-gray-200 hover:border-[#072ac8] hover:bg-[#e6f4fa]/30 text-left transition flex items-center gap-3 cursor-pointer group"
           >
-            <Mail className="w-4 h-4 text-[#7848f4] shrink-0" />
+            <Mail className="w-4 h-4 text-[#072ac8] shrink-0" />
             <div className="min-w-0">
-              <span className="text-xs font-black text-gray-900 block group-hover:text-[#7848f4]">Contact Support</span>
+              <span className="text-xs font-black text-gray-900 block group-hover:text-[#072ac8]">Contact Support</span>
               <span className="text-[10px] text-gray-500 block truncate">stickadmob@gmail.com • 24hr response SLA</span>
             </div>
           </button>
@@ -242,11 +242,11 @@ export const SettingsView: React.FC = () => {
 
           <button
             onClick={() => openLegalModal('eligibility')}
-            className="p-3.5 rounded-2xl border border-gray-200 hover:border-[#7848f4] hover:bg-[#faf7ff] text-left transition flex items-center gap-3 cursor-pointer group"
+            className="p-3.5 rounded-2xl border border-gray-200 hover:border-[#072ac8] hover:bg-[#e6f4fa]/30 text-left transition flex items-center gap-3 cursor-pointer group"
           >
-            <Users className="w-4 h-4 text-[#7848f4] shrink-0" />
+            <Users className="w-4 h-4 text-[#072ac8] shrink-0" />
             <div className="min-w-0">
-              <span className="text-xs font-black text-gray-900 block group-hover:text-[#7848f4]">Age & Geo Eligibility</span>
+              <span className="text-xs font-black text-gray-900 block group-hover:text-[#072ac8]">Age & Geo Eligibility</span>
               <span className="text-[10px] text-gray-500 block truncate">18+ requirement & VPN restriction notice</span>
             </div>
           </button>
@@ -254,10 +254,10 @@ export const SettingsView: React.FC = () => {
       </div>
 
       {/* PWA & Device Status */}
-      <div className="rounded-[28px] bg-white border border-[#e5dcfa] p-5 sm:p-6 shadow-[0_4px_20px_rgba(120,72,244,0.05)] space-y-3">
+      <div className="rounded-[28px] bg-white border border-[#bde0fe] p-5 sm:p-6 shadow-[0_4px_20px_rgba(7,42,200,0.05)] space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Smartphone className="w-5 h-5 text-[#7848f4]" />
+            <Smartphone className="w-5 h-5 text-[#072ac8]" />
             <h4 className="font-extrabold text-sm text-gray-900">Progressive Web App (PWA)</h4>
           </div>
           <PWAInstallButton variant="settings" />
@@ -268,9 +268,9 @@ export const SettingsView: React.FC = () => {
       </div>
 
       {/* Sound & Experience */}
-      <div className="rounded-[28px] bg-white border border-[#e5dcfa] p-5 sm:p-6 shadow-[0_4px_20px_rgba(120,72,244,0.05)] flex items-center justify-between">
+      <div className="rounded-[28px] bg-white border border-[#bde0fe] p-5 sm:p-6 shadow-[0_4px_20px_rgba(7,42,200,0.05)] flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-[#f0ebfc] flex items-center justify-center text-[#7848f4]">
+          <div className="w-11 h-11 rounded-2xl bg-[#e6f4fa] flex items-center justify-center text-[#072ac8]">
             {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5 text-gray-400" />}
           </div>
           <div>
@@ -282,7 +282,7 @@ export const SettingsView: React.FC = () => {
           onClick={toggleSound}
           className={`px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer ${
             soundEnabled
-              ? 'bg-[#7848f4] text-white shadow-sm'
+              ? 'bg-[#072ac8] text-white shadow-sm'
               : 'bg-gray-100 text-gray-500 border border-gray-200'
           }`}
         >
@@ -292,13 +292,13 @@ export const SettingsView: React.FC = () => {
 
       {/* Footer Info */}
       <div className="text-center text-xs text-gray-400 pt-4 space-y-1">
-        <p>Paisa Bharo PWA • PollPe Design Architecture</p>
+        <p>Paisa Bharo PWA</p>
         <p className="flex items-center justify-center gap-1 text-[11px]">
           <span>Protected with Firebase Zero-Trust Security</span>
-          <Shield className="w-3.5 h-3.5 text-[#7848f4] inline" />
+          <Shield className="w-3.5 h-3.5 text-[#072ac8] inline" />
         </p>
         <p className="text-[11px] pt-1">
-          Support: <a href="mailto:stickadmob@gmail.com" className="text-[#7848f4] font-bold hover:underline">stickadmob@gmail.com</a>
+          Support: <a href="mailto:stickadmob@gmail.com" className="text-[#072ac8] font-bold hover:underline">stickadmob@gmail.com</a>
         </p>
       </div>
 
@@ -311,4 +311,3 @@ export const SettingsView: React.FC = () => {
     </div>
   );
 };
-

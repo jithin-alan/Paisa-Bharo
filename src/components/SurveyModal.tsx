@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Award, CheckCircle2, ChevronRight, Clock, Star } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { formatCoinsValue } from '../services/currencies';
-import { PollPeCoin } from './Illustrations';
+import { PaisaBharoCoin } from './Illustrations';
 
 export const SurveyModal: React.FC = () => {
   const { activeSurvey, setActiveSurvey, completeSurvey, selectedCurrency } = useApp();
@@ -53,15 +53,15 @@ export const SurveyModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="w-full max-w-lg rounded-[28px] bg-white border border-[#e5dcfa] shadow-2xl overflow-hidden flex flex-col text-gray-900 max-h-[90vh]">
+      <div className="w-full max-w-lg rounded-[28px] bg-white border border-[#bde0fe] shadow-2xl overflow-hidden flex flex-col text-gray-900 max-h-[90vh]">
         {/* Header */}
         <div className="p-5 bg-white border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#f0ebfc] flex items-center justify-center shrink-0 text-[#7848f4]">
+            <div className="w-10 h-10 rounded-2xl bg-[#e6f4fa] flex items-center justify-center shrink-0 text-[#072ac8]">
               <Award className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-[10px] uppercase tracking-wider font-extrabold text-[#7848f4] bg-[#f0ebfc] px-2 py-0.5 rounded-full">
+              <span className="text-[10px] uppercase tracking-wider font-extrabold text-[#072ac8] bg-[#e6f4fa] px-2 py-0.5 rounded-full">
                 {activeSurvey.category} Survey
               </span>
               <h3 className="text-sm sm:text-base font-black text-gray-900 line-clamp-1 mt-0.5">{activeSurvey.title}</h3>
@@ -76,22 +76,22 @@ export const SurveyModal: React.FC = () => {
         </div>
 
         {/* Reward & Progress ribbon */}
-        <div className="px-5 py-2.5 bg-[#faf8ff] border-b border-gray-100 flex items-center justify-between text-xs">
+        <div className="px-5 py-2.5 bg-[#f0f8fc] border-b border-gray-100 flex items-center justify-between text-xs">
           <div className="flex items-center gap-1.5 text-gray-900 font-extrabold">
-            <PollPeCoin className="w-4 h-4" />
+            <PaisaBharoCoin className="w-4 h-4" />
             <span>Reward: +{activeSurvey.rewardCoins} Coins</span>
             <span className="text-gray-500 font-normal">({formatCoinsValue(activeSurvey.rewardCoins, selectedCurrency)})</span>
           </div>
           <div className="flex items-center gap-1.5 text-gray-500 font-medium">
-            <Clock className="w-3.5 h-3.5 text-[#7848f4]" />
+            <Clock className="w-3.5 h-3.5 text-[#072ac8]" />
             <span>~{activeSurvey.estimatedMinutes} mins</span>
           </div>
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full bg-[#f0ebfc] h-1.5">
+        <div className="w-full bg-[#e6f4fa] h-1.5">
           <div
-            className="bg-[#7848f4] h-1.5 transition-all duration-300"
+            className="bg-[#072ac8] h-1.5 transition-all duration-300"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
@@ -100,18 +100,18 @@ export const SurveyModal: React.FC = () => {
         <div className="p-5 sm:p-6 flex-1 overflow-y-auto">
           {submitted ? (
             <div className="py-8 text-center space-y-4 animate-scale-in">
-              <div className="w-16 h-16 rounded-full bg-[#f0ebfc] border-2 border-[#7848f4] flex items-center justify-center mx-auto text-[#7848f4]">
+              <div className="w-16 h-16 rounded-full bg-[#e6f4fa] border-2 border-[#072ac8] flex items-center justify-center mx-auto text-[#072ac8]">
                 <CheckCircle2 className="w-10 h-10" />
               </div>
               <h3 className="text-xl font-black text-gray-900">Survey Completed!</h3>
               <p className="text-sm text-gray-600 max-w-sm mx-auto">
                 Thank you for contributing your valuable opinion. Your reward of{' '}
-                <strong className="text-[#7848f4]">+{activeSurvey.rewardCoins} Paisa Coins</strong> has been added to your balance.
+                <strong className="text-[#072ac8]">+{activeSurvey.rewardCoins} Paisa Coins</strong> has been added to your balance.
               </p>
               <div className="pt-4">
                 <button
                   onClick={() => setActiveSurvey(null)}
-                  className="px-6 py-2.5 rounded-xl bg-[#7848f4] hover:bg-[#6837e3] text-white font-extrabold text-sm transition shadow-[0_4px_12px_rgba(120,72,244,0.3)]"
+                  className="px-6 py-2.5 rounded-xl bg-[#072ac8] hover:bg-[#05219e] text-white font-extrabold text-sm transition shadow-[0_4px_12px_rgba(7,42,200,0.3)]"
                 >
                   Return to Dashboard
                 </button>
@@ -120,7 +120,7 @@ export const SurveyModal: React.FC = () => {
           ) : (
             <div className="space-y-5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-[#7848f4]">
+                <span className="text-xs font-black text-[#072ac8]">
                   Question {currentStep + 1} of {totalSteps}
                 </span>
                 <span className="text-[11px] text-gray-500">
@@ -171,14 +171,14 @@ export const SurveyModal: React.FC = () => {
                         onClick={() => handleSelectOption(opt)}
                         className={`w-full p-3.5 rounded-2xl border text-left text-sm transition-all flex items-center justify-between cursor-pointer ${
                           isSelected
-                            ? 'bg-[#f0ebfc] border-[#7848f4] text-[#7848f4] font-bold shadow-sm'
+                            ? 'bg-[#e6f4fa] border-[#072ac8] text-[#072ac8] font-bold shadow-sm'
                             : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-800'
                         }`}
                       >
                         <span>{opt}</span>
                         <div
                           className={`w-5 h-5 rounded-${question.type === 'multiple' ? 'md' : 'full'} border flex items-center justify-center shrink-0 ${
-                            isSelected ? 'bg-[#7848f4] border-[#7848f4] text-white' : 'border-gray-300'
+                            isSelected ? 'bg-[#072ac8] border-[#072ac8] text-white' : 'border-gray-300'
                           }`}
                         >
                           {isSelected && <CheckCircle2 className="w-3.5 h-3.5" />}
@@ -203,7 +203,7 @@ export const SurveyModal: React.FC = () => {
               onClick={handleNext}
               className={`px-5 py-2.5 rounded-xl font-black text-xs flex items-center gap-2 transition shadow-sm ${
                 isCurrentStepAnswered() && !isSubmitting
-                  ? 'bg-[#7848f4] hover:bg-[#6837e3] text-white cursor-pointer active:scale-95 shadow-[0_4px_12px_rgba(120,72,244,0.3)]'
+                  ? 'bg-[#072ac8] hover:bg-[#05219e] text-white cursor-pointer active:scale-95 shadow-[0_4px_12px_rgba(7,42,200,0.3)]'
                   : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-60'
               }`}
             >

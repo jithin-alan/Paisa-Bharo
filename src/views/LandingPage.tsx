@@ -257,13 +257,15 @@ export const LandingPage: React.FC<Props> = ({
       <header className="w-full border-b border-gray-100 bg-white/80 backdrop-blur sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-full bg-[#7848f4] flex items-center justify-center text-white font-black">
-              PB
-            </div>
+            <img
+              src="/logo.png"
+              alt="Paisa Bharo Logo"
+              className="w-9 h-9 rounded-xl object-cover shadow-sm"
+            />
 
             <span className="text-2xl font-extrabold">
-              <span className="text-[#7848f4]">Paisa</span>
-              <span className="text-[#f59e0b]">Bharo</span>
+              <span className="text-[#072ac8]">Paisa</span>
+              <span className="text-[#fb8500]">Bharo</span>
             </span>
           </div>
 
@@ -278,7 +280,7 @@ export const LandingPage: React.FC<Props> = ({
                 key={`landing-nav-${item.id}-${idx}`}
                 type="button"
                 onClick={() => scrollTo(item.id)}
-                className="hover:text-[#7848f4]"
+                className="hover:text-[#072ac8]"
               >
                 {item.label}
               </button>
@@ -305,7 +307,7 @@ export const LandingPage: React.FC<Props> = ({
             <button
               type="button"
               onClick={() => scrollTo('join')}
-              className="hidden sm:inline-block px-5 py-2.5 rounded-lg bg-[#7848f4] text-white font-bold"
+              className="hidden sm:inline-block px-5 py-2.5 rounded-lg bg-[#072ac8] text-white font-bold"
             >
               START EARNING
             </button>
@@ -336,12 +338,8 @@ export const LandingPage: React.FC<Props> = ({
 
           {/* Registration Card */}
           <div id="join" className="lg:pl-12">
-            <div className="bg-[#f7f8fc] rounded-3xl border border-[#e5dcfa] p-8 shadow-sm">
-              <h2 className="text-2xl font-extrabold mb-2">Join for free!</h2>
-
-              <p className="text-sm text-[#7848f4] font-semibold mb-6">
-                🎉 Signup now and claim your ₹10 bonus
-              </p>
+            <div className="bg-[#f7f8fc] rounded-3xl border border-[#bde0fe] p-8 shadow-sm">
+              <h2 className="text-2xl font-extrabold mb-6">Join for free!</h2>
 
               {/* Authentication Tabs */}
               <div className="flex gap-2 mb-4">
@@ -350,7 +348,7 @@ export const LandingPage: React.FC<Props> = ({
                   onClick={() => handleTabChange('phone')}
                   className={`flex-1 py-2 rounded-xl text-sm font-semibold transition ${
                     authMode === 'phone'
-                      ? 'bg-[#7848f4] text-white'
+                      ? 'bg-[#072ac8] text-white'
                       : 'bg-white text-gray-600 hover:bg-gray-100'
                   }`}
                 >
@@ -363,7 +361,7 @@ export const LandingPage: React.FC<Props> = ({
                   onClick={() => handleTabChange('email')}
                   className={`flex-1 py-2 rounded-xl text-sm font-semibold transition ${
                     authMode === 'email'
-                      ? 'bg-[#7848f4] text-white'
+                      ? 'bg-[#072ac8] text-white'
                       : 'bg-white text-gray-600 hover:bg-gray-100'
                   }`}
                 >
@@ -383,7 +381,7 @@ export const LandingPage: React.FC<Props> = ({
                           <select
                             value={countryCode}
                             onChange={(e) => setCountryCode(e.target.value)}
-                            className="w-28 px-3 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#7848f4] bg-white text-sm appearance-none cursor-pointer"
+                            className="w-28 px-3 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#072ac8] bg-white text-sm appearance-none cursor-pointer"
                           >
                             {sortedCountryCodes.map((country, idx) => (
                               <option key={`country-${country.code}-${country.name}-${idx}`} value={country.code}>
@@ -409,7 +407,7 @@ export const LandingPage: React.FC<Props> = ({
                           }
                           maxLength={10}
                           required
-                          className="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#7848f4]"
+                          className="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#072ac8]"
                         />
                       </div>
                     </div>
@@ -421,7 +419,7 @@ export const LandingPage: React.FC<Props> = ({
                     <button
                       type="submit"
                       disabled={phoneLoading || phoneNumber.length !== 10}
-                      className="w-full py-3 rounded-xl bg-[#7848f4] hover:bg-[#6837e3] text-white font-bold disabled:opacity-60"
+                      className="w-full py-3 rounded-xl bg-[#072ac8] hover:bg-[#05219e] text-white font-bold disabled:opacity-60 cursor-pointer transition shadow-sm"
                     >
                       {phoneLoading ? 'Processing...' : 'CONTINUE'}
                     </button>
@@ -461,7 +459,7 @@ export const LandingPage: React.FC<Props> = ({
                     <button
                       type="button"
                       onClick={handleBackToPhone}
-                      className="w-full py-2 text-sm text-[#7848f4] font-semibold"
+                      className="w-full py-2 text-sm text-[#072ac8] font-semibold"
                     >
                       Back
                     </button>
@@ -485,7 +483,7 @@ export const LandingPage: React.FC<Props> = ({
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#7848f4]"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#072ac8]"
                   />
 
                   <input
@@ -495,7 +493,7 @@ export const LandingPage: React.FC<Props> = ({
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     minLength={isLogin ? undefined : 6}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#7848f4]"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#072ac8]"
                   />
 
                   {emailError && (
@@ -505,7 +503,7 @@ export const LandingPage: React.FC<Props> = ({
                   <button
                     type="submit"
                     disabled={phoneLoading}
-                    className="w-full py-3 rounded-xl bg-[#7848f4] hover:bg-[#6837e3] text-white font-bold disabled:opacity-60"
+                    className="w-full py-3 rounded-xl bg-[#072ac8] hover:bg-[#05219e] text-white font-bold disabled:opacity-60 cursor-pointer transition shadow-sm"
                   >
                     {phoneLoading
                       ? 'Processing...'
@@ -517,7 +515,7 @@ export const LandingPage: React.FC<Props> = ({
                   <button
                     type="button"
                     onClick={() => setIsLogin(!isLogin)}
-                    className="w-full py-2 text-sm text-[#7848f4] font-semibold"
+                    className="w-full py-2 text-sm text-[#072ac8] font-semibold"
                   >
                     {isLogin
                       ? "Don't have an account? Sign up"
@@ -538,11 +536,11 @@ export const LandingPage: React.FC<Props> = ({
                 type="button"
                 onClick={onGoogleLogin}
                 disabled={googleLoading}
-                className="w-full py-3 rounded-xl border-2 border-[#7848f4] bg-white text-[#7848f4] font-bold flex items-center justify-center gap-3 hover:bg-[#f7f4fe] transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
+                className="w-full py-3 rounded-xl border-2 border-[#072ac8] bg-white text-[#072ac8] font-bold flex items-center justify-center gap-3 hover:bg-[#e6f4fa] transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
               >
                 {googleLoading ? (
                   <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-[#7848f4] border-t-transparent rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-[#072ac8] border-t-transparent rounded-full animate-spin" />
                     <span>OPENING GOOGLE SIGN-IN...</span>
                   </div>
                 ) : (
@@ -572,7 +570,7 @@ export const LandingPage: React.FC<Props> = ({
                       href={window.location.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-block mt-1 text-xs text-[#7848f4] font-bold underline hover:text-[#5d31cf]"
+                      className="inline-block mt-1 text-xs text-[#072ac8] font-bold underline hover:text-[#05219e]"
                     >
                       Open app in a new browser tab &rarr;
                     </a>
@@ -633,30 +631,30 @@ export const LandingPage: React.FC<Props> = ({
       <footer className="border-t border-gray-200 bg-gray-50 py-12 px-6 text-gray-600 text-xs">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div>
-            <p className="font-extrabold text-sm text-gray-900">Paisa Bharo • PollPe Design Architecture</p>
-            <p className="text-[#7848f4] font-semibold mt-0.5">
+            <p className="font-extrabold text-sm text-gray-900">Paisa Bharo</p>
+            <p className="text-[#072ac8] font-semibold mt-0.5">
               Support Email: <a href="mailto:stickadmob@gmail.com" className="hover:underline font-extrabold">stickadmob@gmail.com</a>
             </p>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-4 font-bold text-gray-700">
-            <button onClick={() => openLegalModal('privacy')} className="hover:text-[#7848f4] transition cursor-pointer">
+            <button onClick={() => openLegalModal('privacy')} className="hover:text-[#072ac8] transition cursor-pointer">
               Privacy Policy
             </button>
             <span>•</span>
-            <button onClick={() => openLegalModal('terms')} className="hover:text-[#7848f4] transition cursor-pointer">
+            <button onClick={() => openLegalModal('terms')} className="hover:text-[#072ac8] transition cursor-pointer">
               Terms & Conditions
             </button>
             <span>•</span>
-            <button onClick={() => openLegalModal('rewards')} className="hover:text-[#7848f4] transition cursor-pointer">
+            <button onClick={() => openLegalModal('rewards')} className="hover:text-[#072ac8] transition cursor-pointer">
               Reward Policy (1000 Coins = $1.00)
             </button>
             <span>•</span>
-            <button onClick={() => openLegalModal('support')} className="hover:text-[#7848f4] transition cursor-pointer">
+            <button onClick={() => openLegalModal('support')} className="hover:text-[#072ac8] transition cursor-pointer">
               Customer Support
             </button>
             <span>•</span>
-            <button onClick={() => openLegalModal('deletion')} className="hover:text-[#7848f4] text-red-600 transition cursor-pointer">
+            <button onClick={() => openLegalModal('deletion')} className="hover:text-[#072ac8] text-red-600 transition cursor-pointer">
               Data & Account Deletion
             </button>
           </div>

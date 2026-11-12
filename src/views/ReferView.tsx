@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Copy, Check, Share2, Sparkles, MessageCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getTranslation } from '../services/i18n';
-import { MascotReferIllustration, PollPeCoin } from '../components/Illustrations';
+import { MascotReferIllustration, PaisaBharoCoin } from '../components/Illustrations';
 
 export const ReferView: React.FC = () => {
   const { user, selectedLanguage, applyReferralCode } = useApp();
@@ -49,19 +49,19 @@ export const ReferView: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Hero Banner in PollPe Clean Theme */}
-      <div className="rounded-[28px] bg-white border border-[#e5dcfa] p-6 sm:p-8 shadow-[0_4px_20px_rgba(120,72,244,0.06)] text-gray-900 text-center space-y-5">
+      {/* Hero Banner in Ocean Blue & Tangerine Theme */}
+      <div className="rounded-[28px] bg-white border border-[#bde0fe] p-6 sm:p-8 shadow-[0_4px_20px_rgba(7,42,200,0.06)] text-gray-900 text-center space-y-5">
         <div className="mx-auto flex justify-center">
           <MascotReferIllustration className="w-28 h-28" />
         </div>
 
         <div>
-          <span className="text-xs font-black uppercase tracking-wider text-[#7848f4] block">
+          <span className="text-xs font-black uppercase tracking-wider text-[#072ac8] block">
             REFER & EARN
           </span>
           <h2 className="text-xl sm:text-2xl font-black text-gray-900 mt-1 flex items-center justify-center gap-2 flex-wrap">
             <span>Invite Your Friends & Get 500</span>
-            <PollPeCoin className="w-6 h-6 inline shrink-0" />
+            <PaisaBharoCoin className="w-6 h-6 inline shrink-0" />
             <span>Each!</span>
           </h2>
           <p className="text-xs sm:text-sm text-gray-500 max-w-md mx-auto mt-1.5">
@@ -70,18 +70,18 @@ export const ReferView: React.FC = () => {
         </div>
 
         {/* Code Box */}
-        <div className="max-w-xs mx-auto p-3.5 rounded-2xl bg-[#f0ebfc] border-2 border-dashed border-[#7848f4] flex items-center justify-between gap-3">
+        <div className="max-w-xs mx-auto p-3.5 rounded-2xl bg-[#e6f4fa] border-2 border-dashed border-[#072ac8] flex items-center justify-between gap-3">
           <div className="text-left pl-2">
             <span className="text-[10px] uppercase font-bold text-gray-500 block">
               {getTranslation(selectedLanguage, 'yourReferralCode')}
             </span>
-            <span className="text-lg font-black tracking-widest text-[#7848f4]">
+            <span className="text-lg font-black tracking-widest text-[#072ac8]">
               {referralCode}
             </span>
           </div>
           <button
             onClick={handleCopy}
-            className="px-4 py-2 rounded-xl bg-[#7848f4] hover:bg-[#6837e3] text-white font-black text-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-sm"
+            className="px-4 py-2 rounded-xl bg-[#072ac8] hover:bg-[#05219e] text-white font-black text-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-sm"
           >
             {copied ? <Check className="w-4 h-4 text-white" /> : <Copy className="w-4 h-4" />}
             <span>{copied ? 'Copied!' : 'Copy'}</span>
@@ -92,7 +92,7 @@ export const ReferView: React.FC = () => {
         <div className="flex items-center justify-center gap-3 pt-2">
           <button
             onClick={handleNativeShare}
-            className="px-5 py-2.5 rounded-xl bg-[#7848f4] hover:bg-[#6837e3] text-white font-extrabold text-xs flex items-center gap-2 shadow-[0_4px_12px_rgba(120,72,244,0.3)] transition cursor-pointer active:scale-95"
+            className="px-5 py-2.5 rounded-xl bg-[#072ac8] hover:bg-[#05219e] text-white font-extrabold text-xs flex items-center gap-2 shadow-[0_4px_12px_rgba(7,42,200,0.3)] transition cursor-pointer active:scale-95"
           >
             <Share2 className="w-4 h-4" />
             <span>Share Invite Link</span>
@@ -111,9 +111,9 @@ export const ReferView: React.FC = () => {
       </div>
 
       {/* Enter Invite Code Section */}
-      <div className="rounded-[26px] bg-white border border-[#e5dcfa] p-5 sm:p-6 shadow-[0_4px_20px_rgba(120,72,244,0.05)] text-gray-900 space-y-3">
+      <div className="rounded-[26px] bg-white border border-[#bde0fe] p-5 sm:p-6 shadow-[0_4px_20px_rgba(7,42,200,0.05)] text-gray-900 space-y-3">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-[#7848f4]" />
+          <Sparkles className="w-5 h-5 text-[#072ac8]" />
           <h3 className="font-extrabold text-sm sm:text-base text-gray-900">
             {getTranslation(selectedLanguage, 'enterReferralCode')}
           </h3>
@@ -123,8 +123,8 @@ export const ReferView: React.FC = () => {
         </p>
 
         {user?.referredBy ? (
-          <div className="p-3.5 rounded-xl bg-[#f0ebfc] text-xs text-[#7848f4] font-semibold flex items-center gap-2">
-            <Check className="w-4 h-4 shrink-0 text-[#7848f4]" />
+          <div className="p-3.5 rounded-xl bg-[#e6f4fa] text-xs text-[#072ac8] font-semibold flex items-center gap-2">
+            <Check className="w-4 h-4 shrink-0 text-[#072ac8]" />
             <span>You joined with referral code: <strong>{user.referredBy}</strong> (+100 Coins awarded).</span>
           </div>
         ) : (
@@ -134,11 +134,11 @@ export const ReferView: React.FC = () => {
               value={inviteInput}
               onChange={(e) => setInviteInput(e.target.value)}
               placeholder="e.g. PB-789XYZ"
-              className="flex-1 px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 text-xs placeholder:text-gray-400 focus:outline-none focus:border-[#7848f4] uppercase font-bold tracking-wider"
+              className="flex-1 px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 text-xs placeholder:text-gray-400 focus:outline-none focus:border-[#072ac8] uppercase font-bold tracking-wider"
             />
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-xl bg-[#7848f4] hover:bg-[#6837e3] text-white font-extrabold text-xs transition cursor-pointer active:scale-95 shrink-0 shadow-sm"
+              className="px-5 py-2.5 rounded-xl bg-[#072ac8] hover:bg-[#05219e] text-white font-extrabold text-xs transition cursor-pointer active:scale-95 shrink-0 shadow-sm"
             >
               {getTranslation(selectedLanguage, 'applyCode')}
             </button>
@@ -159,27 +159,27 @@ export const ReferView: React.FC = () => {
       </div>
 
       {/* How it Works 3 steps */}
-      <div className="rounded-[26px] bg-white border border-[#e5dcfa] p-5 sm:p-6 shadow-[0_4px_20px_rgba(120,72,244,0.05)] text-gray-900 space-y-4">
+      <div className="rounded-[26px] bg-white border border-[#bde0fe] p-5 sm:p-6 shadow-[0_4px_20px_rgba(7,42,200,0.05)] text-gray-900 space-y-4">
         <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500">
           Referral Program Rules & Benefits
         </h4>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 text-center space-y-2">
-            <span className="w-8 h-8 rounded-full bg-[#f0ebfc] text-[#7848f4] font-black flex items-center justify-center mx-auto text-xs shadow-sm">
+            <span className="w-8 h-8 rounded-full bg-[#e6f4fa] text-[#072ac8] font-black flex items-center justify-center mx-auto text-xs shadow-sm">
               1
             </span>
             <h5 className="font-extrabold text-xs text-gray-900">Share Your Link</h5>
             <p className="text-[11px] text-gray-500">Send your link or code via WhatsApp, Telegram, or social media.</p>
           </div>
           <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 text-center space-y-2">
-            <span className="w-8 h-8 rounded-full bg-[#f0ebfc] text-[#7848f4] font-black flex items-center justify-center mx-auto text-xs shadow-sm">
+            <span className="w-8 h-8 rounded-full bg-[#e6f4fa] text-[#072ac8] font-black flex items-center justify-center mx-auto text-xs shadow-sm">
               2
             </span>
             <h5 className="font-extrabold text-xs text-gray-900">Friend Votes First Poll</h5>
             <p className="text-[11px] text-gray-500">Your friend votes on their first quick poll and gets 100 free coins.</p>
           </div>
           <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 text-center space-y-2">
-            <span className="w-8 h-8 rounded-full bg-[#f0ebfc] text-[#7848f4] font-black flex items-center justify-center mx-auto text-xs shadow-sm">
+            <span className="w-8 h-8 rounded-full bg-[#e6f4fa] text-[#072ac8] font-black flex items-center justify-center mx-auto text-xs shadow-sm">
               3
             </span>
             <h5 className="font-extrabold text-xs text-gray-900">+500 Coins + 10% Forever</h5>
