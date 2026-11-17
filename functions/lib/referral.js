@@ -1,6 +1,42 @@
-import * as functions from "firebase-functions";
-import * as admin from "firebase-admin";
-import { db, getUserRef } from "./helpers";
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.applyReferralCode = void 0;
+const functions = __importStar(require("firebase-functions"));
+const admin = __importStar(require("firebase-admin"));
+const helpers_1 = require("./helpers");
 /**
  * Referral eligibility configuration
  * Adjust these thresholds based on your fraud risk tolerance
@@ -23,7 +59,7 @@ const REFERRAL_CONFIG = {
  * Calculates referral eligibility for a user
  */
 async function checkReferralEligibility(userId, transaction) {
-    const userDoc = await transaction.get(getUserRef(userId));
+    const userDoc = await transaction.get((0, helpers_1.getUserRef)(userId));
     if (!userDoc.exists) {
         return { eligible: false, reason: "User not found" };
     }
@@ -48,7 +84,7 @@ async function checkReferralEligibility(userId, transaction) {
  * Detects potential fraud and returns fraud score (0-100)
  */
 async function calculateFraudScore(userId, transaction) {
-    const userDoc = await transaction.get(getUserRef(userId));
+    const userDoc = await transaction.get((0, helpers_1.getUserRef)(userId));
     if (!userDoc.exists)
         return 100; // Suspicious - user not found
     const userData = userDoc.data();
@@ -63,7 +99,7 @@ async function calculateFraudScore(userId, transaction) {
     let currentReferrer = userData.referralCode;
     while (currentReferrer && depth < 10) {
         depth++;
-        const referrerQuery = await db
+        const referrerQuery = await helpers_1.db
             .collection("users")
             .where("referralCode", "==", currentReferrer)
             .limit(1)
@@ -89,7 +125,7 @@ async function calculateFraudScore(userId, transaction) {
  * Creates a durable one-time referral reward record
  */
 async function createReferralRewardRecord(transaction, params) {
-    const rewardRef = db.collection("referral_rewards").doc(params.rewardId);
+    const rewardRef = helpers_1.db.collection("referral_rewards").doc(params.rewardId);
     transaction.set(rewardRef, {
         id: params.rewardId,
         userId: params.userId,
@@ -111,7 +147,7 @@ async function createReferralRewardRecord(transaction, params) {
  * (checks if reward should be issued immediately or held pending qualification)
  */
 async function shouldIssueImmediateReward(referredUserId, transaction) {
-    const userDoc = await transaction.get(getUserRef(referredUserId));
+    const userDoc = await transaction.get((0, helpers_1.getUserRef)(referredUserId));
     if (!userDoc.exists)
         return false;
     const userData = userDoc.data();
@@ -125,7 +161,7 @@ async function shouldIssueImmediateReward(referredUserId, transaction) {
     }
     return false;
 }
-export const applyReferralCode = functions.https.onCall(async (request, response) => {
+exports.applyReferralCode = functions.https.onCall(async (request, response) => {
     const context = request.auth;
     if (!context) {
         throw new functions.https.HttpsError("unauthenticated", "Must be logged in");
@@ -136,8 +172,8 @@ export const applyReferralCode = functions.https.onCall(async (request, response
         throw new functions.https.HttpsError("invalid-argument", "Invalid referral code format");
     }
     const formattedCode = code.trim().toUpperCase();
-    const userRef = getUserRef(userId);
-    return await db.runTransaction(async (transaction) => {
+    const userRef = (0, helpers_1.getUserRef)(userId);
+    return await helpers_1.db.runTransaction(async (transaction) => {
         const userDoc = await transaction.get(userRef);
         if (!userDoc.exists) {
             throw new functions.https.HttpsError("not-found", "User not found");
@@ -148,7 +184,7 @@ export const applyReferralCode = functions.https.onCall(async (request, response
             throw new functions.https.HttpsError("invalid-argument", "Cannot use your own referral code");
         }
         // Check durable referral claim record to guarantee uniqueness even across concurrent requests
-        const claimRef = db.collection("referral_claims").doc(userId);
+        const claimRef = helpers_1.db.collection("referral_claims").doc(userId);
         const claimDoc = await transaction.get(claimRef);
         if (claimDoc.exists || userData.referredBy) {
             throw new functions.https.HttpsError("already-exists", "Already applied a referral code");
@@ -159,7 +195,7 @@ export const applyReferralCode = functions.https.onCall(async (request, response
             throw new functions.https.HttpsError("failed-precondition", eligibility.reason || "Not eligible for referrals");
         }
         // Find referrer
-        const referrerQuery = await db
+        const referrerQuery = await helpers_1.db
             .collection("users")
             .where("referralCode", "==", formattedCode)
             .limit(1)
@@ -194,7 +230,7 @@ export const applyReferralCode = functions.https.onCall(async (request, response
             console.warn(`Medium fraud score for referral ${formattedCode}: user=${userId}, referrer=${referrerId}, score=${totalFraudScore}`);
         }
         // Check referrer's daily referral limit
-        const referrerRef = getUserRef(referrerId);
+        const referrerRef = (0, helpers_1.getUserRef)(referrerId);
         const referrerTodayReferrals = referrerData.dailyReferralsCount || 0;
         if (referrerTodayReferrals >= REFERRAL_CONFIG.MIN_REFERRALS_PER_DAY) {
             throw new functions.https.HttpsError("failed-precondition", "Referrer has reached daily referral limit");
@@ -271,7 +307,7 @@ export const applyReferralCode = functions.https.onCall(async (request, response
             });
             // Create transaction records for audit trail
             const statusText = "qualified";
-            const txRef1 = db.collection("user_transactions").doc();
+            const txRef1 = helpers_1.db.collection("user_transactions").doc();
             transaction.set(txRef1, {
                 userId,
                 type: "credit",
@@ -287,7 +323,7 @@ export const applyReferralCode = functions.https.onCall(async (request, response
                 },
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
             });
-            const txRef2 = db.collection("user_transactions").doc();
+            const txRef2 = helpers_1.db.collection("user_transactions").doc();
             transaction.set(txRef2, {
                 userId: referrerId,
                 type: "credit",

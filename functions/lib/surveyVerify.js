@@ -1,6 +1,42 @@
-import * as functions from "firebase-functions";
-import * as crypto from "crypto";
-import { db } from "./helpers";
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.verifySurveyCompletion = exports.requestSurveyCompletionToken = void 0;
+const functions = __importStar(require("firebase-functions"));
+const crypto = __importStar(require("crypto"));
+const helpers_1 = require("./helpers");
 /**
  * Endpoint to verify a user has completed a survey and obtain a completion token.
  * This separates the "survey was completed" step from the "award coins" step.
@@ -55,7 +91,7 @@ async function verifyCompletionToken(token, surveyId, userId) {
  * HTTPS callable to request verification token for survey completion.
  * In dev mode or with proper credentials, returns a time-limited token.
  */
-export const requestSurveyCompletionToken = functions.https.onCall(async (request, response) => {
+exports.requestSurveyCompletionToken = functions.https.onCall(async (request, response) => {
     const context = request.auth;
     if (!context) {
         throw new functions.https.HttpsError("unauthenticated", "Must be logged in");
@@ -66,7 +102,7 @@ export const requestSurveyCompletionToken = functions.https.onCall(async (reques
         throw new functions.https.HttpsError("invalid-argument", "Missing surveyId");
     }
     // Check if survey exists and is available
-    const surveyRef = db.collection("surveys").doc(surveyId);
+    const surveyRef = helpers_1.db.collection("surveys").doc(surveyId);
     const surveySnap = await surveyRef.get();
     if (!surveySnap.exists) {
         throw new functions.https.HttpsError("not-found", "Survey not found");
@@ -76,8 +112,8 @@ export const requestSurveyCompletionToken = functions.https.onCall(async (reques
         throw new functions.https.HttpsError("failed-precondition", "Survey is not currently active");
     }
     // Check if user already completed this survey
-    const taskRef = db.collection("user_tasks").doc(`${surveyId}_${userId}`);
-    const existingTask = await db.collection("user_tasks").doc(`${surveyId}_${userId}`).get();
+    const taskRef = helpers_1.db.collection("user_tasks").doc(`${surveyId}_${userId}`);
+    const existingTask = await helpers_1.db.collection("user_tasks").doc(`${surveyId}_${userId}`).get();
     if (existingTask.exists && existingTask.data()?.status === "completed") {
         throw new functions.https.HttpsError("already-exists", "Survey already completed");
     }
@@ -102,7 +138,7 @@ export const requestSurveyCompletionToken = functions.https.onCall(async (reques
  * HTTP endpoint to verify a survey completion token.
  * Used by the server-side completeSurvey function.
  */
-export const verifySurveyCompletion = functions.https.onRequest(async (req, res) => {
+exports.verifySurveyCompletion = functions.https.onRequest(async (req, res) => {
     // Allow CORS for web clients
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');

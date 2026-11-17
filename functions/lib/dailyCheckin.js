@@ -1,14 +1,50 @@
-import * as functions from "firebase-functions";
-import * as admin from "firebase-admin";
-import { db, getUserRef, resolveTimezone, getDateInTimezone, getDaysDifference, } from "./helpers";
-export const claimDailyCheckIn = functions.https.onCall(async (request, response) => {
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.claimDailyCheckIn = void 0;
+const functions = __importStar(require("firebase-functions"));
+const admin = __importStar(require("firebase-admin"));
+const helpers_1 = require("./helpers");
+exports.claimDailyCheckIn = functions.https.onCall(async (request, response) => {
     const context = request.auth;
     if (!context) {
         throw new functions.https.HttpsError("unauthenticated", "Must be logged in");
     }
     const userId = context.uid;
-    const userRef = getUserRef(userId);
-    return await db.runTransaction(async (transaction) => {
+    const userRef = (0, helpers_1.getUserRef)(userId);
+    return await helpers_1.db.runTransaction(async (transaction) => {
         const userDoc = await transaction.get(userRef);
         if (!userDoc.exists) {
             throw new functions.https.HttpsError("not-found", "User not found");
@@ -16,14 +52,14 @@ export const claimDailyCheckIn = functions.https.onCall(async (request, response
         const userData = userDoc.data();
         const requestData = (request.data || {});
         // Resolve user's timezone consistently
-        const userTimezone = resolveTimezone(requestData.timezone, userData.timezone, userData.country);
+        const userTimezone = (0, helpers_1.resolveTimezone)(requestData.timezone, userData.timezone, userData.country);
         // Get current calendar date in user's timezone (YYYY-MM-DD)
-        const today = getDateInTimezone(new Date(), userTimezone);
+        const today = (0, helpers_1.getDateInTimezone)(new Date(), userTimezone);
         const lastCheckIn = userData.lastCheckInDate;
         const currentStreak = userData.streakDays || 0;
         let newStreak = 1;
         if (lastCheckIn) {
-            const diffDays = getDaysDifference(lastCheckIn, today);
+            const diffDays = (0, helpers_1.getDaysDifference)(lastCheckIn, today);
             if (diffDays <= 0) {
                 throw new functions.https.HttpsError("already-exists", `Already claimed daily bonus today (${today}) in timezone ${userTimezone}`);
             }
@@ -56,7 +92,7 @@ export const claimDailyCheckIn = functions.https.onCall(async (request, response
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
         // Create transaction record
-        const txRef = db.collection("user_transactions").doc();
+        const txRef = helpers_1.db.collection("user_transactions").doc();
         transaction.set(txRef, {
             userId,
             type: "credit",

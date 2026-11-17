@@ -1,8 +1,11 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+import { getFirestore } from "firebase-admin/firestore";
 
-admin.initializeApp();
-export const db = admin.firestore();
+const FIRESTORE_DATABASE_ID = "ai-studio-ba803483-ddcf-496c-b3c9-7d1a85fc5692";
+
+const app = admin.apps.length ? admin.app() : admin.initializeApp();
+export const db = getFirestore(app, FIRESTORE_DATABASE_ID);
 
 /**
  * Helper to get user document reference

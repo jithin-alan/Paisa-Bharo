@@ -1,7 +1,44 @@
-import * as functions from "firebase-functions";
-import * as admin from "firebase-admin";
-import { createHmac, timingSafeEqual } from "crypto";
-import { db, getUserRef } from "./helpers";
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.processProviderCallback = exports.providerPostback = void 0;
+exports.verifyProviderSignature = verifyProviderSignature;
+const functions = __importStar(require("firebase-functions"));
+const admin = __importStar(require("firebase-admin"));
+const crypto_1 = require("crypto");
+const helpers_1 = require("./helpers");
 const PROVIDERS = ["cint", "adgem", "bitlabs", "affiliate"];
 // Secrets come from the function's environment. Never hardcode or default these.
 const SECRET_ENV = {
@@ -72,12 +109,12 @@ function resolveCoins(provider, coinsRaw, usdRaw) {
 // Signature verification (provider-specific, fail-closed)
 // ---------------------------------------------------------------------------
 function hmacHex(secret, data) {
-    return createHmac("sha256", secret).update(data, "utf8").digest("hex");
+    return (0, crypto_1.createHmac)("sha256", secret).update(data, "utf8").digest("hex");
 }
 function safeEqualHex(received, expected) {
     const a = Buffer.from(received.trim().toLowerCase(), "utf8");
     const b = Buffer.from(expected.toLowerCase(), "utf8");
-    return a.length === b.length && timingSafeEqual(a, b);
+    return a.length === b.length && (0, crypto_1.timingSafeEqual)(a, b);
 }
 /*
  * The signed-field rules below follow the field lists in the original code.
@@ -176,7 +213,7 @@ const VERIFIERS = {
         return candidates.some(signed => safeEqualHex(received, hmacHex(secret, signed)));
     },
 };
-export function verifyProviderSignature(provider, payload) {
+function verifyProviderSignature(provider, payload) {
     const secret = process.env[SECRET_ENV[provider]];
     if (!secret) {
         console.error(`[SECURITY] ${SECRET_ENV[provider]} is not set; rejecting ${provider} callback`);
@@ -301,10 +338,10 @@ function parseCallback(provider, p) {
 // ---------------------------------------------------------------------------
 async function executeCallback(input) {
     const { provider, transactionId, userId, coinsAwarded, reason, metadata } = input;
-    const userRef = getUserRef(userId);
-    const txRef = db.collection("provider_transactions").doc(`${provider}_${transactionId}`);
+    const userRef = (0, helpers_1.getUserRef)(userId);
+    const txRef = helpers_1.db.collection("provider_transactions").doc(`${provider}_${transactionId}`);
     try {
-        return await db.runTransaction(async (transaction) => {
+        return await helpers_1.db.runTransaction(async (transaction) => {
             const existingTx = await transaction.get(txRef);
             if (existingTx.exists) {
                 return {
@@ -344,7 +381,7 @@ async function executeCallback(input) {
                 lifetimeEarnings: (userData.lifetimeEarnings || 0) + coinsAwarded,
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
-            transaction.set(db.collection("user_transactions").doc(), {
+            transaction.set(helpers_1.db.collection("user_transactions").doc(), {
                 userId,
                 type: "credit",
                 amount: coinsAwarded,
@@ -356,7 +393,7 @@ async function executeCallback(input) {
             });
             // Mark survey completion as verified if it's a survey completion
             if (provider === 'cint' && metadata.surveyId) {
-                const tokenRef = db.collection("survey_tokens").doc(`sv_${metadata.surveyId}_${userId}`);
+                const tokenRef = helpers_1.db.collection("survey_tokens").doc(`sv_${metadata.surveyId}_${userId}`);
                 const tokenDoc = await transaction.get(tokenRef);
                 if (tokenDoc.exists) {
                     transaction.update(tokenRef, {
@@ -397,7 +434,7 @@ async function executeCallback(input) {
  * Deploy URL: .../providerPostback/<provider>   (cint | adgem | bitlabs | affiliate)
  * POST only. Anything else gets 405 and no processing.
  */
-export const providerPostback = functions.https.onRequest(async (req, res) => {
+exports.providerPostback = functions.https.onRequest(async (req, res) => {
     if (req.method !== "POST") {
         res.set("Allow", "POST");
         res.status(405).json({ success: false, error: "Method not allowed" });
@@ -462,7 +499,7 @@ export const providerPostback = functions.https.onRequest(async (req, res) => {
 /**
  * Admin-only manual credit. Provider traffic must not use this; it goes through providerPostback.
  */
-export const processProviderCallback = functions.https.onCall(async (request, response) => {
+exports.processProviderCallback = functions.https.onCall(async (request, response) => {
     const auth = request.auth;
     if (!auth) {
         throw new functions.https.HttpsError("unauthenticated", "Sign in required");

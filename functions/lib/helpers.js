@@ -1,23 +1,67 @@
-import * as admin from "firebase-admin";
-admin.initializeApp();
-export const db = admin.firestore();
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.db = void 0;
+exports.getUserRef = getUserRef;
+exports.isAdminUser = isAdminUser;
+exports.isValidTimezone = isValidTimezone;
+exports.resolveTimezone = resolveTimezone;
+exports.getDateInTimezone = getDateInTimezone;
+exports.getDaysDifference = getDaysDifference;
+const admin = __importStar(require("firebase-admin"));
+const firestore_1 = require("firebase-admin/firestore");
+const FIRESTORE_DATABASE_ID = "ai-studio-ba803483-ddcf-496c-b3c9-7d1a85fc5692";
+const app = admin.apps.length ? admin.app() : admin.initializeApp();
+exports.db = (0, firestore_1.getFirestore)(app, FIRESTORE_DATABASE_ID);
 /**
  * Helper to get user document reference
  */
-export function getUserRef(userId) {
-    return db.collection("users").doc(userId);
+function getUserRef(userId) {
+    return exports.db.collection("users").doc(userId);
 }
 /**
  * Helper to check if user is admin via custom claims
  * @param context - The auth context (request.auth from callable functions)
  */
-export function isAdminUser(context) {
+function isAdminUser(context) {
     return context?.token?.admin === true;
 }
 /**
  * Checks if a string is a valid IANA timezone name.
  */
-export function isValidTimezone(tz) {
+function isValidTimezone(tz) {
     if (!tz || typeof tz !== "string" || tz.length > 64)
         return false;
     try {
@@ -50,7 +94,7 @@ const COUNTRY_TIMEZONE_MAP = {
 /**
  * Resolves the appropriate timezone for a user request
  */
-export function resolveTimezone(requestedTz, userProfileTz, userCountry) {
+function resolveTimezone(requestedTz, userProfileTz, userCountry) {
     if (isValidTimezone(requestedTz)) {
         return requestedTz;
     }
@@ -68,7 +112,7 @@ export function resolveTimezone(requestedTz, userProfileTz, userCountry) {
 /**
  * Formats a Date object into YYYY-MM-DD in the specified timezone
  */
-export function getDateInTimezone(date, timeZone) {
+function getDateInTimezone(date, timeZone) {
     try {
         const formatter = new Intl.DateTimeFormat("en-CA", {
             timeZone,
@@ -86,7 +130,7 @@ export function getDateInTimezone(date, timeZone) {
  * Calculates calendar day difference (dateStr2 - dateStr1) in integer days.
  * E.g., ('2026-11-10', '2026-11-11') => 1 day
  */
-export function getDaysDifference(dateStr1, dateStr2) {
+function getDaysDifference(dateStr1, dateStr2) {
     const d1 = new Date(dateStr1 + "T00:00:00Z");
     const d2 = new Date(dateStr2 + "T00:00:00Z");
     const diffTime = d2.getTime() - d1.getTime();

@@ -1,7 +1,43 @@
-import * as functions from "firebase-functions";
-import * as admin from "firebase-admin";
-import { db, getUserRef } from "./helpers";
-export const requestRedemption = functions.https.onCall(async (request, response) => {
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.reviewRedemption = exports.requestRedemption = void 0;
+const functions = __importStar(require("firebase-functions"));
+const admin = __importStar(require("firebase-admin"));
+const helpers_1 = require("./helpers");
+exports.requestRedemption = functions.https.onCall(async (request, response) => {
     const auth = request.auth;
     if (!auth) {
         throw new functions.https.HttpsError("unauthenticated", "Must be logged in");
@@ -14,10 +50,10 @@ export const requestRedemption = functions.https.onCall(async (request, response
     if (coinsSpent <= 0 || !Number.isInteger(coinsSpent)) {
         throw new functions.https.HttpsError("invalid-argument", "Invalid coin amount");
     }
-    const userRef = getUserRef(userId);
+    const userRef = (0, helpers_1.getUserRef)(userId);
     const redemptionId = `red_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
-    const redemptionRef = db.collection("redemptions").doc(redemptionId);
-    return await db.runTransaction(async (transaction) => {
+    const redemptionRef = helpers_1.db.collection("redemptions").doc(redemptionId);
+    return await helpers_1.db.runTransaction(async (transaction) => {
         const userDoc = await transaction.get(userRef);
         if (!userDoc.exists) {
             throw new functions.https.HttpsError("not-found", "User not found");
@@ -46,7 +82,7 @@ export const requestRedemption = functions.https.onCall(async (request, response
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
         // Create transaction record
-        const txRef = db.collection("user_transactions").doc();
+        const txRef = helpers_1.db.collection("user_transactions").doc();
         transaction.set(txRef, {
             userId,
             type: "debit",
@@ -68,7 +104,7 @@ export const requestRedemption = functions.https.onCall(async (request, response
  * Trusted server-side admin review of redemption requests.
  * Atomically refunds coins to the user when a redemption is rejected.
  */
-export const reviewRedemption = functions.https.onCall(async (request, response) => {
+exports.reviewRedemption = functions.https.onCall(async (request, response) => {
     const context = request.auth;
     if (!context) {
         throw new functions.https.HttpsError("unauthenticated", "Must be logged in");
@@ -81,8 +117,8 @@ export const reviewRedemption = functions.https.onCall(async (request, response)
     if (!redemptionId || !status || !["completed", "rejected"].includes(status)) {
         throw new functions.https.HttpsError("invalid-argument", "Invalid redemption decision arguments");
     }
-    const redemptionRef = db.collection("redemptions").doc(redemptionId);
-    return await db.runTransaction(async (transaction) => {
+    const redemptionRef = helpers_1.db.collection("redemptions").doc(redemptionId);
+    return await helpers_1.db.runTransaction(async (transaction) => {
         const redemptionDoc = await transaction.get(redemptionRef);
         if (!redemptionDoc.exists) {
             throw new functions.https.HttpsError("not-found", "Redemption request not found");
@@ -94,7 +130,7 @@ export const reviewRedemption = functions.https.onCall(async (request, response)
         }
         const userId = redData.userId;
         const coinsSpent = Number(redData.coinsSpent) || 0;
-        const userRef = getUserRef(userId);
+        const userRef = (0, helpers_1.getUserRef)(userId);
         // If rejected, refund the coins back to the user atomically
         if (status === "rejected") {
             const userDoc = await transaction.get(userRef);
@@ -107,7 +143,7 @@ export const reviewRedemption = functions.https.onCall(async (request, response)
                     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
                 });
                 // Create transaction refund audit record
-                const txRef = db.collection("user_transactions").doc();
+                const txRef = helpers_1.db.collection("user_transactions").doc();
                 transaction.set(txRef, {
                     userId,
                     type: "credit",

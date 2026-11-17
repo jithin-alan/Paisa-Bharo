@@ -1,6 +1,42 @@
-import * as functions from "firebase-functions";
-import * as admin from "firebase-admin";
-import { db, getUserRef, isAdminUser } from "./helpers";
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.processReferralReward = exports.processPendingReferralRewards = void 0;
+const functions = __importStar(require("firebase-functions"));
+const admin = __importStar(require("firebase-admin"));
+const helpers_1 = require("./helpers");
 /**
  * Referral reward processing configuration
  */
@@ -14,7 +50,7 @@ const REFERRAL_PROCESSING_CONFIG = {
  * Cloud Function triggered periodically to process pending referral rewards
  * Awards bonuses to users who have completed the qualifying period
  */
-export const processPendingReferralRewards = functions.scheduler
+exports.processPendingReferralRewards = functions.scheduler
     .onSchedule({
     schedule: `*/${REFERRAL_PROCESSING_CONFIG.CHECK_INTERVAL_MINUTES} * * * *`,
     timeZone: "America/New_York", // Adjust to your timezone
@@ -23,7 +59,7 @@ export const processPendingReferralRewards = functions.scheduler
     const now = admin.firestore.Timestamp.now();
     const minAge = admin.firestore.Timestamp.fromDate(new Date(Date.now() - REFERRAL_PROCESSING_CONFIG.MIN_AGE_HOURS * 60 * 60 * 1000));
     // Find pending referral rewards that are ready to be completed
-    const pendingRewardsSnapshot = await db
+    const pendingRewardsSnapshot = await helpers_1.db
         .collection("referral_rewards")
         .where("status", "==", "pending")
         .where("createdAt", "<", minAge)
@@ -35,7 +71,7 @@ export const processPendingReferralRewards = functions.scheduler
     }
     let processedCount = 0;
     let errorCount = 0;
-    await db.runTransaction(async (transaction) => {
+    await helpers_1.db.runTransaction(async (transaction) => {
         for (const rewardDoc of pendingRewardsSnapshot.docs) {
             const rewardData = rewardDoc.data();
             const rewardRef = rewardDoc.ref;
@@ -45,7 +81,7 @@ export const processPendingReferralRewards = functions.scheduler
                     continue;
                 }
                 const targetUserId = rewardData.userId;
-                const targetUserRef = getUserRef(targetUserId);
+                const targetUserRef = (0, helpers_1.getUserRef)(targetUserId);
                 const userDoc = await transaction.get(targetUserRef);
                 if (!userDoc.exists) {
                     console.warn(`User ${targetUserId} not found for reward ${rewardDoc.id}`);
@@ -75,7 +111,7 @@ export const processPendingReferralRewards = functions.scheduler
                     completedAt: now,
                 });
                 // Create a transaction record for the reward
-                const txRef = db.collection("user_transactions").doc();
+                const txRef = helpers_1.db.collection("user_transactions").doc();
                 transaction.set(txRef, {
                     userId: targetUserId,
                     type: "credit",
@@ -93,7 +129,7 @@ export const processPendingReferralRewards = functions.scheduler
                 });
                 // If this was a referrer reward, update referrer tracking stats
                 if (rewardData.type === 'referral_reward') {
-                    const referrerRef = getUserRef(rewardData.referrerId);
+                    const referrerRef = (0, helpers_1.getUserRef)(rewardData.referrerId);
                     transaction.update(referrerRef, {
                         referralRewardsGiven: admin.firestore.FieldValue.increment(1),
                         updatedAt: now,
@@ -122,7 +158,7 @@ export const processPendingReferralRewards = functions.scheduler
  * Manual API endpoint to process a specific pending referral reward
  * Useful for admin tools or retry mechanisms
  */
-export const processReferralReward = functions.https.onCall(async (request, response) => {
+exports.processReferralReward = functions.https.onCall(async (request, response) => {
     const context = request.auth;
     if (!context) {
         throw new functions.https.HttpsError("unauthenticated", "Must be logged in");
@@ -132,12 +168,12 @@ export const processReferralReward = functions.https.onCall(async (request, resp
         throw new functions.https.HttpsError("invalid-argument", "Missing rewardId");
     }
     // Strictly enforce admin access
-    if (!isAdminUser(context)) {
+    if (!(0, helpers_1.isAdminUser)(context)) {
         throw new functions.https.HttpsError("permission-denied", "Admin access required");
     }
     const now = admin.firestore.Timestamp.now();
-    const rewardRef = db.collection("referral_rewards").doc(rewardId);
-    return await db.runTransaction(async (transaction) => {
+    const rewardRef = helpers_1.db.collection("referral_rewards").doc(rewardId);
+    return await helpers_1.db.runTransaction(async (transaction) => {
         const rewardDoc = await transaction.get(rewardRef);
         if (!rewardDoc.exists) {
             throw new functions.https.HttpsError("not-found", "Reward not found");
@@ -147,7 +183,7 @@ export const processReferralReward = functions.https.onCall(async (request, resp
             throw new functions.https.HttpsError("failed-precondition", `Reward is in ${rewardData.status} status, cannot process`);
         }
         const targetUserId = rewardData.userId;
-        const userRef = getUserRef(targetUserId);
+        const userRef = (0, helpers_1.getUserRef)(targetUserId);
         const userDoc = await transaction.get(userRef);
         if (!userDoc.exists) {
             throw new functions.https.HttpsError("not-found", "User not found");
@@ -168,14 +204,14 @@ export const processReferralReward = functions.https.onCall(async (request, resp
         });
         // If this was a referrer reward, update referrer tracking stats
         if (rewardData.type === "referral_reward") {
-            const referrerRef = getUserRef(rewardData.referrerId);
+            const referrerRef = (0, helpers_1.getUserRef)(rewardData.referrerId);
             transaction.update(referrerRef, {
                 referralRewardsGiven: admin.firestore.FieldValue.increment(1),
                 updatedAt: now,
             });
         }
         // Transaction record for recipient
-        const txRef = db.collection("user_transactions").doc();
+        const txRef = helpers_1.db.collection("user_transactions").doc();
         transaction.set(txRef, {
             userId: targetUserId,
             type: "credit",

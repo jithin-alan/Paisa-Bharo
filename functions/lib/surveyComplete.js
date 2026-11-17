@@ -1,6 +1,42 @@
-import * as functions from "firebase-functions";
-import * as admin from "firebase-admin";
-import { db, getUserRef } from "./helpers";
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.completeSurvey = exports.requestSurveyVerification = void 0;
+const functions = __importStar(require("firebase-functions"));
+const admin = __importStar(require("firebase-admin"));
+const helpers_1 = require("./helpers");
 /**
  * Environment flag - set to true for development/testing to allow
  * client-invoked survey completion. Set to false for production.
@@ -14,7 +50,7 @@ const DEV_MODE = process.env.SURVEY_DEV_MODE === 'true' ||
  */
 async function generateVerificationToken(surveyId, userId) {
     const tokenId = `sv_${surveyId}_${userId}`;
-    const tokenRef = db.collection("survey_tokens").doc(tokenId);
+    const tokenRef = helpers_1.db.collection("survey_tokens").doc(tokenId);
     // Store the pending verification
     await tokenRef.set({
         userId,
@@ -30,7 +66,7 @@ async function generateVerificationToken(surveyId, userId) {
  */
 async function verifyToken(surveyId, userId) {
     const tokenId = `sv_${surveyId}_${userId}`;
-    const tokenRef = db.collection("survey_tokens").doc(tokenId);
+    const tokenRef = helpers_1.db.collection("survey_tokens").doc(tokenId);
     const tokenDoc = await tokenRef.get();
     if (!tokenDoc.exists)
         return false;
@@ -41,7 +77,7 @@ async function verifyToken(surveyId, userId) {
  * HTTPS callable to request survey completion verification token.
  * Only available in dev mode or when called through an authenticated flow.
  */
-export const requestSurveyVerification = functions.https.onCall(async (request, response) => {
+exports.requestSurveyVerification = functions.https.onCall(async (request, response) => {
     const context = request.auth;
     if (!context) {
         throw new functions.https.HttpsError("unauthenticated", "Must be logged in");
@@ -52,7 +88,7 @@ export const requestSurveyVerification = functions.https.onCall(async (request, 
         throw new functions.https.HttpsError("invalid-argument", "Missing surveyId");
     }
     // Check if survey exists
-    const surveyRef = db.collection("surveys").doc(surveyId);
+    const surveyRef = helpers_1.db.collection("surveys").doc(surveyId);
     const surveySnap = await surveyRef.get();
     if (!surveySnap.exists) {
         throw new functions.https.HttpsError("not-found", "Survey not found");
@@ -62,7 +98,7 @@ export const requestSurveyVerification = functions.https.onCall(async (request, 
         throw new functions.https.HttpsError("failed-precondition", "Survey is not currently active");
     }
     // Check if already completed
-    const taskRef = db.collection("user_tasks").doc(`${surveyId}_${userId}`);
+    const taskRef = helpers_1.db.collection("user_tasks").doc(`${surveyId}_${userId}`);
     const existingTask = await taskRef.get();
     if (existingTask.exists && existingTask.data()?.status === "completed") {
         throw new functions.https.HttpsError("already-exists", "Survey already completed");
@@ -84,7 +120,7 @@ export const requestSurveyVerification = functions.https.onCall(async (request, 
  *
  * For development/testing (DEV_MODE=true), token verification is bypassed.
  */
-export const completeSurvey = functions.https.onCall(async (request, response) => {
+exports.completeSurvey = functions.https.onCall(async (request, response) => {
     const context = request.auth;
     if (!context) {
         throw new functions.https.HttpsError("unauthenticated", "Must be logged in");
@@ -100,11 +136,11 @@ export const completeSurvey = functions.https.onCall(async (request, response) =
             throw new functions.https.HttpsError("failed-precondition", "Survey not verified by provider. Complete survey through provider link first.");
         }
     }
-    const surveyRef = db.collection("surveys").doc(surveyId);
-    const taskRef = db.collection("user_tasks").doc(`${surveyId}_${userId}`);
-    const userRef = getUserRef(userId);
-    const tokenRef = db.collection("survey_tokens").doc(`sv_${surveyId}_${userId}`);
-    return await db.runTransaction(async (transaction) => {
+    const surveyRef = helpers_1.db.collection("surveys").doc(surveyId);
+    const taskRef = helpers_1.db.collection("user_tasks").doc(`${surveyId}_${userId}`);
+    const userRef = (0, helpers_1.getUserRef)(userId);
+    const tokenRef = helpers_1.db.collection("survey_tokens").doc(`sv_${surveyId}_${userId}`);
+    return await helpers_1.db.runTransaction(async (transaction) => {
         const surveyDoc = await transaction.get(surveyRef);
         if (!surveyDoc.exists) {
             throw new functions.https.HttpsError("not-found", "Survey not found");
@@ -142,7 +178,7 @@ export const completeSurvey = functions.https.onCall(async (request, response) =
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
         // Create transaction record for audit trail
-        const txRef = db.collection("user_transactions").doc();
+        const txRef = helpers_1.db.collection("user_transactions").doc();
         transaction.set(txRef, {
             userId,
             type: "credit",
