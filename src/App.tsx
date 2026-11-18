@@ -37,6 +37,7 @@ import { DealsCashbackView } from './views/DealsCashbackView';
 import { SurveyModal } from './components/SurveyModal';
 import { CintSurveyModal } from './components/CintSurveyModal';
 import { OfferwallModal } from './components/OfferwallModal';
+import { TheoremReachModal } from './components/TheoremReachModal';
 import { WebhookTesterModal } from './components/WebhookTesterModal';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { OfflineIndicator } from './components/OfflineIndicator';
@@ -59,6 +60,7 @@ const AppContent: React.FC = () => {
   // Third-party provider modals
   const [activeCintSurveyModal, setActiveCintSurveyModal] = useState<CintSurvey | null>(null);
   const [isOfferwallOpen, setIsOfferwallOpen] = useState(false);
+  const [isTheoremReachOpen, setIsTheoremReachOpen] = useState(false);
   const [offerwallDefaultProvider, setOfferwallDefaultProvider] = useState<'adgem' | 'bitlabs'>('adgem');
   const [isWebhookTesterOpen, setIsWebhookTesterOpen] = useState(false);
 
@@ -613,6 +615,7 @@ const AppContent: React.FC = () => {
             onNavigateTab={setActiveTab}
             onOpenOfferwall={handleOpenOfferwall}
             onOpenCintSurvey={handleOpenCintSurvey}
+            onOpenTheoremReach={() => setIsTheoremReachOpen(true)}
             onOpenWebhookTester={() => setIsWebhookTesterOpen(true)}
           />
         )}
@@ -639,6 +642,12 @@ const AppContent: React.FC = () => {
         isOpen={isOfferwallOpen}
         onClose={() => setIsOfferwallOpen(false)}
         defaultProvider={offerwallDefaultProvider}
+      />
+
+      {/* TheoremReach Server-Signed Survey Wall Modal */}
+      <TheoremReachModal
+        isOpen={isTheoremReachOpen}
+        onClose={() => setIsTheoremReachOpen(false)}
       />
 
       {/* S2S Webhook & Postback Developer Simulator */}

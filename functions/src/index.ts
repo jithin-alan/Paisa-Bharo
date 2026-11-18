@@ -9,7 +9,8 @@ import { requestRedemption, reviewRedemption } from "./redemption";
 import { applyReferralCode } from "./referral";
 import { awardCoins } from "./admin";
 import { processPendingReferralRewards, processReferralReward } from "./processReferralRewards";
-import { processProviderCallback, providerPostback } from "./providerCallbacks";
+import { processProviderCallback, providerPostback, theoremreachEventWebhook } from "./providerCallbacks";
+import { getTheoremReachLaunchUrl } from "./theoremreach";
 
 // Export only real Cloud Functions. Signature verifiers are internal helpers and are not exported here.
 export {
@@ -26,4 +27,6 @@ export {
   processReferralReward,
   processProviderCallback,
   providerPostback,
+  theoremreachEventWebhook,
+  getTheoremReachLaunchUrl,
 };

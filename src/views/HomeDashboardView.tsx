@@ -9,6 +9,7 @@ interface Props {
   onNavigateTab: (tab: 'home' | 'polls' | 'offers' | 'cashout' | 'refer' | 'settings' | 'deals') => void;
   onOpenOfferwall: (provider?: 'adgem' | 'bitlabs') => void;
   onOpenCintSurvey: (survey?: any) => void;
+  onOpenTheoremReach?: () => void;
   onOpenWebhookTester: () => void;
 }
 
@@ -16,6 +17,7 @@ export const HomeDashboardView: React.FC<Props> = ({
   onNavigateTab,
   onOpenOfferwall,
   onOpenCintSurvey,
+  onOpenTheoremReach,
   onOpenWebhookTester,
 }) => {
   const { user, selectedCurrency, setActiveSurvey, surveys, votePoll } = useApp();
@@ -66,6 +68,17 @@ export const HomeDashboardView: React.FC<Props> = ({
       ),
       iconColor: 'text-[#10B981]',
       minMax: '250-700',
+    },
+    {
+      id: 'theoremreach',
+      name: 'TheoremReach',
+      icon: (
+        <div className="w-5 h-5 rounded-md bg-[#3c098d] flex items-center justify-center text-white font-black text-[9px]">
+          TR
+        </div>
+      ),
+      iconColor: 'text-[#3c098d]',
+      minMax: '50-2,000',
     },
   ];
 
@@ -169,6 +182,14 @@ export const HomeDashboardView: React.FC<Props> = ({
             >
               <span>📊 Cint Surveys</span>
             </button>
+            {onOpenTheoremReach && (
+              <button
+                onClick={onOpenTheoremReach}
+                className="px-3 py-1.5 rounded-xl bg-[#f3ecff] hover:bg-[#e8d9ff] text-[#3c098d] text-xs font-bold transition flex items-center gap-1 cursor-pointer border border-[#d6c2ff]"
+              >
+                <span>📋 TheoremReach Surveys</span>
+              </button>
+            )}
             <button
               onClick={() => onOpenOfferwall()}
               className="px-3 py-1.5 rounded-xl bg-[#fff0db] hover:bg-[#ffe5c7] text-[#b05d00] text-xs font-bold transition flex items-center gap-1 cursor-pointer border border-[#ffd099]"
@@ -252,6 +273,8 @@ export const HomeDashboardView: React.FC<Props> = ({
               onClick={() => {
                 if (p.id === 'bitlabs') {
                   onOpenOfferwall('bitlabs');
+                } else if (p.id === 'theoremreach') {
+                  onOpenTheoremReach?.();
                 } else {
                   onOpenCintSurvey();
                 }
@@ -278,7 +301,7 @@ export const HomeDashboardView: React.FC<Props> = ({
                   </div>
                 </div>
                 <span className="text-[10px] font-bold text-[#072ac8] group-hover:underline">
-                  {p.id === 'bitlabs' ? 'Open Wall ›' : 'Start ›'}
+                  {p.id === 'bitlabs' || p.id === 'theoremreach' ? 'Open Wall ›' : 'Start ›'}
                 </span>
               </div>
             </div>

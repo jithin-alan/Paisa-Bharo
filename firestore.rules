@@ -45,7 +45,7 @@ service cloud.firestore {
              // CRITICAL SECURITY: Prevent users from setting admin fields
              !data.keys().hasAny(['isAdmin', 'role', 'isSuperadmin', 'permissions']) &&
              // CRITICAL SECURITY: Prevent client modification of server-managed fields
-             !data.keys().hasAny(['accountAge', 'fraudScore', 'suspicionFlags']);
+             !data.keys().hasAny(['accountAge', 'fraudScore', 'suspicionFlags', 'providerBans']);
     }
 
     // Wallet fields that must NEVER be set by clients — only initialized/trusted server-side
@@ -191,6 +191,19 @@ service cloud.firestore {
                    );
       allow create: if false; // Only server-side writes via cloud functions
       allow update, delete: if isAdmin();
+    }
+
+    // Server-managed provider ledgers & sessions (strictly locked against all client access)
+    match /provider_transactions/{txId} {
+      allow read, write: if false;
+    }
+
+    match /provider_events/{eventId} {
+      allow read, write: if false;
+    }
+
+    match /theoremreach_sessions/{sessionId} {
+      allow read, write: if false;
     }
   }
 }

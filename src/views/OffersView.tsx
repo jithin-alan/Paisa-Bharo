@@ -6,12 +6,14 @@ import { formatCoinsValue } from '../services/currencies';
 import { Offer } from '../types';
 import { PaisaBharoCoin } from '../components/Illustrations';
 import { OfferwallModal } from '../components/OfferwallModal';
+import { TheoremReachModal } from '../components/TheoremReachModal';
 
 export const OffersView: React.FC = () => {
   const { offers, selectedLanguage, selectedCurrency, votePoll, activeOfferwallProvider } = useApp();
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [isOfferwallOpen, setIsOfferwallOpen] = useState(false);
+  const [isTheoremReachOpen, setIsTheoremReachOpen] = useState(false);
   const [claimedTasks, setClaimedTasks] = useState<string[]>(() => {
     const saved = localStorage.getItem('paisabhar_claimed_offers');
     return saved ? JSON.parse(saved) : [];
@@ -94,6 +96,32 @@ export const OffersView: React.FC = () => {
         >
           <Gamepad2 className="w-4 h-4 text-[#fb8500]" />
           <span>Launch Offerwall</span>
+        </button>
+      </div>
+
+      {/* TheoremReach Survey Offerwall Entry Card */}
+      <div className="bg-gradient-to-r from-[#3c098d] to-[#072ac8] rounded-[24px] p-5 sm:p-6 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg shadow-[#3c098d]/20">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="bg-white/20 backdrop-blur-md text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
+              Survey Offerwall: TheoremReach
+            </span>
+            <span className="text-[#ffd099] text-xs font-black">1,000 Coins / $1 USD</span>
+          </div>
+          <h3 className="text-lg font-black tracking-tight">
+            TheoremReach Instant Survey Wall
+          </h3>
+          <p className="text-xs text-white/80 max-w-md">
+            Share opinions on global brands with server-verified payouts credited directly to your wallet.
+          </p>
+        </div>
+
+        <button
+          onClick={() => setIsTheoremReachOpen(true)}
+          className="bg-white hover:bg-[#e6f4fa] text-[#3c098d] font-black text-xs px-5 py-3 rounded-xl shadow-md transition cursor-pointer flex items-center gap-1.5 shrink-0 active:scale-95"
+        >
+          <ExternalLink className="w-4 h-4 text-[#3c098d]" />
+          <span>Start TheoremReach</span>
         </button>
       </div>
 
@@ -267,6 +295,12 @@ export const OffersView: React.FC = () => {
       <OfferwallModal
         isOpen={isOfferwallOpen}
         onClose={() => setIsOfferwallOpen(false)}
+      />
+
+      {/* TheoremReach Survey Wall Modal */}
+      <TheoremReachModal
+        isOpen={isTheoremReachOpen}
+        onClose={() => setIsTheoremReachOpen(false)}
       />
     </div>
   );

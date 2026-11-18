@@ -2,23 +2,41 @@ import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { createHmac, timingSafeEqual } from "crypto";
 import { db, getUserRef } from "./helpers";
+import {
+  THEOREMREACH_EXCHANGE_RATE,
+  executeTheoremReachBanEvent,
+  executeTheoremReachReversalEvent,
+  getTheoremReachApiKey,
+  getTheoremReachSecret,
+  isSafeFirestoreId,
+  parseTheoremReachEventPayload,
+  parseTheoremReachRewardPayload,
+  safeEqualString,
+  theoremreachApiKeySecret,
+  theoremreachSecretKey,
+  verifyTheoremReachIncomingUrl,
+} from "./theoremreach";
 
 /**
  * Provider callback handling.
  *
  * Flow for every S2S postback:
- *   1. POST only. Provider is taken from the URL path, never from the body.
+ *   1. Cint, AdGem, BitLabs, Affiliate: POST only. Provider is taken from the URL path, never from the body.
+ *      TheoremReach: GET only for reward callbacks (/theoremreach), POST only for event webhooks (/theoremreach-event or theoremreachEventWebhook).
  *   2. Signature is verified with a provider-specific rule. Missing secret = reject.
  *   3. Payload fields are validated and coin amounts are range-checked. No defaults.
  *   4. The credit is written in one Firestore transaction keyed by provider + transaction id,
  *      so a retried callback can never credit twice.
  */
 
-export type ProviderName = "cint" | "adgem" | "bitlabs" | "affiliate";
-const PROVIDERS: readonly ProviderName[] = ["cint", "adgem", "bitlabs", "affiliate"];
+export type LegacyProviderName = "cint" | "adgem" | "bitlabs" | "affiliate";
+export type ProviderName = LegacyProviderName | "theoremreach";
+const LEGACY_PROVIDERS: readonly LegacyProviderName[] = ["cint", "adgem", "bitlabs", "affiliate"];
+const PROVIDERS: readonly ProviderName[] = [...LEGACY_PROVIDERS, "theoremreach"];
 
-// Secrets come from the function's environment. Never hardcode or default these.
-const SECRET_ENV: Record<ProviderName, string> = {
+// Secrets for legacy HTTP providers come from environment variables.
+// TheoremReach secrets are bound via Firebase Functions v2 defineSecret().
+const SECRET_ENV: Record<LegacyProviderName, string> = {
   cint: "CINT_API_KEY",
   adgem: "ADGEM_SECRET",
   bitlabs: "BITLABS_SECRET",
@@ -31,6 +49,7 @@ const COIN_MULTIPLIER: Record<ProviderName, number> = {
   adgem: 500,
   bitlabs: 500,
   affiliate: 500,
+  theoremreach: THEOREMREACH_EXCHANGE_RATE,
 };
 
 const MAX_COINS = 10000;
@@ -48,7 +67,17 @@ export interface ProviderCallbackInput {
 
 export interface ProviderCallbackResult {
   success: boolean;
-  status: "credited" | "duplicate" | "ignored" | "invalid_signature" | "invalid_payload" | "user_not_found" | "error";
+  status:
+    | "credited"
+    | "duplicate"
+    | "ignored"
+    | "invalid_signature"
+    | "invalid_payload"
+    | "user_not_found"
+    | "banned"
+    | "invalid_session"
+    | "session_user_mismatch"
+    | "error";
   message: string;
   transactionId?: string;
   userId?: string;
@@ -62,6 +91,10 @@ export interface ProviderCallbackResult {
 
 function isProvider(value: unknown): value is ProviderName {
   return typeof value === "string" && (PROVIDERS as readonly string[]).includes(value);
+}
+
+function isLegacyProvider(value: unknown): value is LegacyProviderName {
+  return typeof value === "string" && (LEGACY_PROVIDERS as readonly string[]).includes(value);
 }
 
 /** Non-empty trimmed string (or finite number rendered as string), max 200 chars. */
@@ -85,11 +118,11 @@ function num(value: unknown): number | null {
 }
 
 function isValidUserId(id: string): boolean {
-  return id.length >= 3 && id !== "guest_user";
+  return isSafeFirestoreId(id) && id !== "guest_user";
 }
 
 function isValidTransactionId(id: string): boolean {
-  return id.length >= 3;
+  return isSafeFirestoreId(id);
 }
 
 /**
@@ -127,7 +160,7 @@ type Verifier = (payload: Record<string, unknown>, secret: string) => boolean;
  * The signed-field rules below follow the field lists in the original code.
  * Each one must be checked against that provider's current documentation before going live.
  */
-const VERIFIERS: Record<ProviderName, Verifier> = {
+const VERIFIERS: Record<LegacyProviderName, Verifier> = {
   // Cint: HMAC-SHA256 over timestamp|respondentId|surveyId|status[|subId]
   cint: (p, secret) => {
     const received = str(p.secureHash || p.hash || p.signature || p.sig);
@@ -231,7 +264,7 @@ const VERIFIERS: Record<ProviderName, Verifier> = {
   },
 };
 
-export function verifyProviderSignature(provider: ProviderName, payload: Record<string, unknown>): boolean {
+export function verifyProviderSignature(provider: LegacyProviderName, payload: Record<string, unknown>): boolean {
   const secret = process.env[SECRET_ENV[provider]];
   if (!secret) {
     console.error(`[SECURITY] ${SECRET_ENV[provider]} is not set; rejecting ${provider} callback`);
@@ -254,7 +287,7 @@ type ParseOutcome =
   | { kind: "ignored"; reason: string }
   | { kind: "invalid"; error: string };
 
-function parseCallback(provider: ProviderName, p: Record<string, unknown>): ParseOutcome {
+function parseCallback(provider: LegacyProviderName, p: Record<string, unknown>): ParseOutcome {
   const invalid = (error: string): ParseOutcome => ({ kind: "invalid", error });
 
   switch (provider) {
@@ -361,11 +394,32 @@ function parseCallback(provider: ProviderName, p: Record<string, unknown>): Pars
 // Wallet credit (single Firestore transaction)
 // ---------------------------------------------------------------------------
 
-async function executeCallback(input: ProviderCallbackInput): Promise<ProviderCallbackResult> {
+export async function executeCallback(input: ProviderCallbackInput): Promise<ProviderCallbackResult> {
   const { provider, transactionId, userId, coinsAwarded, reason, metadata } = input;
 
   const userRef = getUserRef(userId);
   const txRef = db.collection("provider_transactions").doc(`${provider}_${transactionId}`);
+
+  const externalTxId =
+    provider === "theoremreach" && typeof metadata.externalTransactionId === "string"
+      ? metadata.externalTransactionId.trim()
+      : "";
+
+  if (externalTxId && !isSafeFirestoreId(externalTxId)) {
+    return {
+      success: false,
+      status: "invalid_session",
+      message: "Invalid externalTransactionId.",
+      transactionId,
+      userId,
+      coinsAwarded: 0,
+    };
+  }
+
+  const sessionRef =
+    provider === "theoremreach" && externalTxId
+      ? db.collection("theoremreach_sessions").doc(externalTxId)
+      : null;
 
   try {
     return await db.runTransaction<ProviderCallbackResult>(async (transaction) => {
@@ -394,6 +448,48 @@ async function executeCallback(input: ProviderCallbackInput): Promise<ProviderCa
       }
 
       const userData = userDoc.data()!;
+      if (provider === "theoremreach" && userData.providerBans?.theoremreach?.banned === true) {
+        return {
+          success: false,
+          status: "banned",
+          message: `TheoremReach rewards are blocked for banned user ${userId}.`,
+          transactionId,
+          userId,
+          coinsAwarded: 0,
+        };
+      }
+
+      if (sessionRef) {
+        const sessionDoc = await transaction.get(sessionRef);
+        if (!sessionDoc.exists) {
+          return {
+            success: false,
+            status: "invalid_session",
+            message: `TheoremReach launch session ${externalTxId} does not exist.`,
+            transactionId,
+            userId,
+            coinsAwarded: 0,
+          };
+        }
+        if (sessionDoc.data()?.userId !== userId) {
+          return {
+            success: false,
+            status: "session_user_mismatch",
+            message: `TheoremReach launch session ${externalTxId} belongs to a different user.`,
+            transactionId,
+            userId,
+            coinsAwarded: 0,
+          };
+        }
+      }
+
+      // Perform any remaining read before writes (Cint survey token verification)
+      const tokenRef =
+        provider === "cint" && metadata.surveyId
+          ? db.collection("survey_tokens").doc(`sv_${metadata.surveyId}_${userId}`)
+          : null;
+      const tokenDoc = tokenRef ? await transaction.get(tokenRef) : null;
+
       const currentBalance = userData.coinsBalance || 0;
       const newBalance = currentBalance + coinsAwarded;
 
@@ -424,16 +520,20 @@ async function executeCallback(input: ProviderCallbackInput): Promise<ProviderCa
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
+      if (sessionRef) {
+        transaction.update(sessionRef, {
+          status: "completed",
+          lastProviderTxId: transactionId,
+          lastCreditedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+
       // Mark survey completion as verified if it's a survey completion
-      if (provider === 'cint' && metadata.surveyId) {
-        const tokenRef = db.collection("survey_tokens").doc(`sv_${metadata.surveyId}_${userId}`);
-        const tokenDoc = await transaction.get(tokenRef);
-        if (tokenDoc.exists) {
-            transaction.update(tokenRef, {
-                status: 'verified',
-                verifiedAt: admin.firestore.FieldValue.serverTimestamp()
-            });
-        }
+      if (tokenRef && tokenDoc?.exists) {
+        transaction.update(tokenRef, {
+          status: "verified",
+          verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
       }
 
       return {
@@ -461,87 +561,305 @@ async function executeCallback(input: ProviderCallbackInput): Promise<ProviderCa
 }
 
 // ---------------------------------------------------------------------------
-// Cloud Functions
+// TheoremReach HTTP Reward Callback & Event Webhook Handlers
 // ---------------------------------------------------------------------------
 
-/**
- * Provider S2S postback endpoint.
- * Deploy URL: .../providerPostback/<provider>   (cint | adgem | bitlabs | affiliate)
- * POST only. Anything else gets 405 and no processing.
- */
-export const providerPostback = functions.https.onRequest(async (req, res) => {
+type OnRequestHandler = Parameters<typeof functions.https.onRequest>[0];
+type HttpRequest = Parameters<OnRequestHandler>[0];
+type HttpResponse = Parameters<OnRequestHandler>[1];
+
+export async function handleTheoremReachEventHttp(
+  req: HttpRequest,
+  res: HttpResponse,
+  allowedFunctionNames?: readonly string[]
+): Promise<void> {
   if (req.method !== "POST") {
     res.set("Allow", "POST");
     res.status(405).json({ success: false, error: "Method not allowed" });
     return;
   }
 
-  // Provider comes from the URL only, so the body cannot choose which rules apply.
-  const segment = (req.path.split("/").filter(Boolean).pop() || "").toLowerCase();
-  if (!isProvider(segment)) {
-    res.status(404).json({ success: false, error: "Unknown provider" });
-    return;
-  }
-
-  const body = req.body;
-  if (!body || typeof body !== "object" || Array.isArray(body)) {
-    res.status(400).json({ success: false, status: "invalid_payload", error: "Invalid payload" });
-    return;
-  }
-  const payload: Record<string, unknown> = { ...req.query, ...body };
-
-  if (!verifyProviderSignature(segment, payload)) {
-    console.warn(`[SECURITY] Rejected ${segment} callback: signature check failed`);
+  const secret = getTheoremReachSecret();
+  const configuredApiKey = getTheoremReachApiKey();
+  if (!secret || !configuredApiKey) {
+    console.error("[SECURITY] TheoremReach secrets are not configured; rejecting TheoremReach webhook");
     res.status(403).json({ success: false, status: "invalid_signature", error: "Invalid signature" });
     return;
   }
 
-  const parsed = parseCallback(segment, payload);
+  const rawPath = req.originalUrl || req.url || req.path || "";
+  const fnNames =
+    allowedFunctionNames && allowedFunctionNames.length > 0
+      ? allowedFunctionNames
+      : rawPath.includes("/theoremreach-event")
+        ? ["providerPostback"]
+        : ["theoremreachEventWebhook"];
+
+  if (!verifyTheoremReachIncomingUrl(req, secret, fnNames)) {
+    console.warn("[SECURITY] Rejected theoremreach event webhook: signature check failed");
+    res.status(403).json({ success: false, status: "invalid_signature", error: "Invalid signature" });
+    return;
+  }
+
+  const parsed = parseTheoremReachEventPayload(
+    (req.query as Record<string, unknown>) || {},
+    req.body
+  );
+  if (parsed.kind === "invalid") {
+    res.status(400).json({ success: false, status: "invalid_payload", error: parsed.error });
+    return;
+  }
+
+  if (!parsed.apiKey || !safeEqualString(parsed.apiKey, configuredApiKey)) {
+    console.warn("[SECURITY] Rejected theoremreach event webhook: missing or mismatched api_key");
+    res.status(403).json({ success: false, status: "invalid_signature", error: "API key verification failed" });
+    return;
+  }
+
+  const livePostbacksEnabled = process.env.PAISA_BHARO_LIVE_POSTBACKS_ENABLED === "true";
+  if (!livePostbacksEnabled) {
+    console.log(`[SANDBOX] theoremreach ${parsed.kind} event received in sandbox mode.`);
+    res.status(200).json({
+      success: true,
+      status: "sandbox_mock",
+      message: "TheoremReach event signature verified. Live processing is currently disabled for security verification phase.",
+      eventType: parsed.kind,
+      encSalt: parsed.encSalt,
+      userId: parsed.userId,
+    });
+    return;
+  }
+
+  const result =
+    parsed.kind === "reversal"
+      ? await executeTheoremReachReversalEvent(parsed)
+      : await executeTheoremReachBanEvent(parsed);
+
+  const code =
+    result.status === "error"
+      ? 500
+      : result.status === "user_not_found" || result.status === "original_tx_not_found"
+        ? 404
+        : result.status === "user_mismatch" || result.status === "invalid_session"
+          ? 403
+          : 200;
+  res.status(code).json(result);
+}
+
+async function handleTheoremReachRewardHttp(
+  req: HttpRequest,
+  res: HttpResponse
+): Promise<void> {
+  if (req.method !== "GET") {
+    res.set("Allow", "GET");
+    res.status(405).json({ success: false, error: "Method not allowed" });
+    return;
+  }
+
+  const secret = getTheoremReachSecret();
+  if (!secret) {
+    console.error("[SECURITY] THEOREMREACH_SECRET is not set; rejecting theoremreach callback");
+    res.status(403).json({ success: false, status: "invalid_signature", error: "Invalid signature" });
+    return;
+  }
+
+  if (!verifyTheoremReachIncomingUrl(req, secret, ["providerPostback"])) {
+    console.warn("[SECURITY] Rejected theoremreach callback: signature check failed");
+    res.status(403).json({ success: false, status: "invalid_signature", error: "Invalid signature" });
+    return;
+  }
+
+  // Strictly parse query parameters only (never merge req.body into signed GET params)
+  const queryPayload: Record<string, unknown> =
+    req.query && typeof req.query === "object" && !Array.isArray(req.query)
+      ? (req.query as Record<string, unknown>)
+      : {};
+
+  const parsed = parseTheoremReachRewardPayload(queryPayload);
   if (parsed.kind === "invalid") {
     res.status(400).json({ success: false, status: "invalid_payload", error: parsed.error });
     return;
   }
   if (parsed.kind === "ignored") {
-    // 200 so the provider stops retrying a status we deliberately do not credit.
     res.status(200).json({ success: true, status: "ignored", message: parsed.reason });
     return;
   }
 
-  const { input } = parsed;
-  if (!isValidUserId(input.userId) || !isValidTransactionId(input.transactionId)) {
-    res.status(400).json({ success: false, status: "invalid_payload", error: "Invalid user or transaction id" });
-    return;
-  }
-
-  // Production Safeguard: External provider callbacks default to sandbox mode during deployment audit phase
   const livePostbacksEnabled = process.env.PAISA_BHARO_LIVE_POSTBACKS_ENABLED === "true";
   if (!livePostbacksEnabled) {
-    console.log(`[SANDBOX] ${segment} postback received in sandbox mode. Live crediting disabled for security audit phase.`);
+    console.log(`[SANDBOX] theoremreach ${parsed.kind} callback received in sandbox mode.`);
     res.status(200).json({
       success: true,
       status: "sandbox_mock",
       message: "Postback signature verified. Live coin crediting is currently disabled for security verification phase.",
-      transactionId: input.transactionId,
-      userId: input.userId,
+      transactionId: parsed.transactionId,
+      userId: parsed.userId,
       coinsAwarded: 0,
     });
     return;
   }
 
+  if (parsed.kind === "reversal") {
+    const reversalRes = await executeTheoremReachReversalEvent({
+      encSalt: `reward_cb_${parsed.transactionId}`,
+      userId: parsed.userId,
+      at: new Date().toISOString(),
+      externalTransactionId: String(parsed.metadata.externalTransactionId ?? ""),
+      reversedTransactions: [
+        {
+          transactionId: parsed.transactionId,
+          debitCoins: parsed.debitCoins,
+          amountInDollars: String(parsed.metadata.rewardAmountInDollars ?? ""),
+          amountInCurrency: String(parsed.debitCoins),
+        },
+      ],
+    });
+    const code =
+      reversalRes.status === "error"
+        ? 500
+        : reversalRes.status === "user_not_found" || reversalRes.status === "original_tx_not_found"
+          ? 404
+          : reversalRes.status === "user_mismatch" || reversalRes.status === "invalid_session"
+            ? 403
+            : 200;
+    res.status(code).json(reversalRes);
+    return;
+  }
+
   try {
-    const result = await executeCallback(input);
-    const code = result.status === "error" ? 500 : result.status === "user_not_found" ? 404 : 200;
+    const result = await executeCallback({
+      provider: "theoremreach",
+      transactionId: parsed.transactionId,
+      userId: parsed.userId,
+      coinsAwarded: parsed.coinsAwarded,
+      reason: "TheoremReach survey reward",
+      metadata: parsed.metadata,
+    });
+    const code =
+      result.status === "error"
+        ? 500
+        : result.status === "user_not_found"
+          ? 404
+          : result.status === "banned" ||
+              result.status === "invalid_session" ||
+              result.status === "session_user_mismatch"
+            ? 403
+            : 200;
     res.status(code).json(result);
   } catch (error) {
-    console.error(`[ProviderPostback] Unhandled error for ${segment}:`, error);
+    console.error("[ProviderPostback] Unhandled error for theoremreach:", error);
     res.status(500).json({ success: false, status: "error", error: "Internal error" });
   }
-});
+}
+
+/**
+ * Provider S2S postback endpoint.
+ * Deploy URL: .../providerPostback/<provider>   (cint | adgem | bitlabs | affiliate | theoremreach | theoremreach-event)
+ * Existing providers remain POST-only; TheoremReach reward callbacks accept GET only and events require POST.
+ */
+export const providerPostback = functions.https.onRequest(
+  { secrets: [theoremreachApiKeySecret, theoremreachSecretKey] },
+  async (req, res) => {
+    // Provider comes from the URL path (or ?provider=theoremreach when hitting root endpoint).
+    const rawSegment = (req.path.split("/").filter(Boolean).pop() || "").toLowerCase();
+    const queryProvider = str(req.query?.provider)?.toLowerCase() ?? "";
+    const effectiveSegment =
+      rawSegment === "" || rawSegment === "providerpostback"
+        ? queryProvider
+        : rawSegment;
+
+    if (effectiveSegment === "theoremreach-event") {
+      await handleTheoremReachEventHttp(req, res, ["providerPostback"]);
+      return;
+    }
+
+    if (effectiveSegment === "theoremreach") {
+      await handleTheoremReachRewardHttp(req, res);
+      return;
+    }
+
+    if (req.method !== "POST") {
+      res.set("Allow", "POST");
+      res.status(405).json({ success: false, error: "Method not allowed" });
+      return;
+    }
+
+    const segment = rawSegment;
+    if (!isLegacyProvider(segment)) {
+      res.status(404).json({ success: false, error: "Unknown provider" });
+      return;
+    }
+
+    const body = req.body;
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      res.status(400).json({ success: false, status: "invalid_payload", error: "Invalid payload" });
+      return;
+    }
+    const payload: Record<string, unknown> = { ...req.query, ...body };
+
+    if (!verifyProviderSignature(segment, payload)) {
+      console.warn(`[SECURITY] Rejected ${segment} callback: signature check failed`);
+      res.status(403).json({ success: false, status: "invalid_signature", error: "Invalid signature" });
+      return;
+    }
+
+    const parsed = parseCallback(segment, payload);
+    if (parsed.kind === "invalid") {
+      res.status(400).json({ success: false, status: "invalid_payload", error: parsed.error });
+      return;
+    }
+    if (parsed.kind === "ignored") {
+      // 200 so the provider stops retrying a status we deliberately do not credit.
+      res.status(200).json({ success: true, status: "ignored", message: parsed.reason });
+      return;
+    }
+
+    const { input } = parsed;
+    if (!isValidUserId(input.userId) || !isValidTransactionId(input.transactionId)) {
+      res.status(400).json({ success: false, status: "invalid_payload", error: "Invalid user or transaction id" });
+      return;
+    }
+
+    // Production Safeguard: External provider callbacks default to sandbox mode during deployment audit phase
+    const livePostbacksEnabled = process.env.PAISA_BHARO_LIVE_POSTBACKS_ENABLED === "true";
+    if (!livePostbacksEnabled) {
+      console.log(`[SANDBOX] ${segment} postback received in sandbox mode. Live crediting disabled for security audit phase.`);
+      res.status(200).json({
+        success: true,
+        status: "sandbox_mock",
+        message: "Postback signature verified. Live coin crediting is currently disabled for security verification phase.",
+        transactionId: input.transactionId,
+        userId: input.userId,
+        coinsAwarded: 0,
+      });
+      return;
+    }
+
+    try {
+      const result = await executeCallback(input);
+      const code = result.status === "error" ? 500 : result.status === "user_not_found" ? 404 : 200;
+      res.status(code).json(result);
+    } catch (error) {
+      console.error(`[ProviderPostback] Unhandled error for ${segment}:`, error);
+      res.status(500).json({ success: false, status: "error", error: "Internal error" });
+    }
+  }
+);
+
+/**
+ * Dedicated TheoremReach Event Webhook endpoint (reversal / ban events).
+ */
+export const theoremreachEventWebhook = functions.https.onRequest(
+  { secrets: [theoremreachApiKeySecret, theoremreachSecretKey] },
+  async (req, res) => {
+    await handleTheoremReachEventHttp(req, res, ["theoremreachEventWebhook"]);
+  }
+);
 
 /**
  * Admin-only manual credit. Provider traffic must not use this; it goes through providerPostback.
  */
-export const processProviderCallback = functions.https.onCall(async (request, response) => {
+export const processProviderCallback = functions.https.onCall(async (request) => {
   const auth = request.auth;
   if (!auth) {
     throw new functions.https.HttpsError("unauthenticated", "Sign in required");

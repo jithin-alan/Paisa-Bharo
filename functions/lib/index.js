@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.providerPostback = exports.processProviderCallback = exports.processReferralReward = exports.processPendingReferralRewards = exports.awardCoins = exports.applyReferralCode = exports.reviewRedemption = exports.requestRedemption = exports.claimScratchCard = exports.requestSurveyVerification = exports.completeSurvey = exports.votePoll = exports.claimDailyCheckIn = void 0;
+exports.getTheoremReachLaunchUrl = exports.theoremreachEventWebhook = exports.providerPostback = exports.processProviderCallback = exports.processReferralReward = exports.processPendingReferralRewards = exports.awardCoins = exports.applyReferralCode = exports.reviewRedemption = exports.requestRedemption = exports.claimScratchCard = exports.requestSurveyVerification = exports.completeSurvey = exports.votePoll = exports.claimDailyCheckIn = void 0;
 // Import all function modules
 const dailyCheckin_1 = require("./dailyCheckin");
 Object.defineProperty(exports, "claimDailyCheckIn", { enumerable: true, get: function () { return dailyCheckin_1.claimDailyCheckIn; } });
@@ -24,4 +24,7 @@ Object.defineProperty(exports, "processReferralReward", { enumerable: true, get:
 const providerCallbacks_1 = require("./providerCallbacks");
 Object.defineProperty(exports, "processProviderCallback", { enumerable: true, get: function () { return providerCallbacks_1.processProviderCallback; } });
 Object.defineProperty(exports, "providerPostback", { enumerable: true, get: function () { return providerCallbacks_1.providerPostback; } });
+Object.defineProperty(exports, "theoremreachEventWebhook", { enumerable: true, get: function () { return providerCallbacks_1.theoremreachEventWebhook; } });
+const theoremreach_1 = require("./theoremreach");
+Object.defineProperty(exports, "getTheoremReachLaunchUrl", { enumerable: true, get: function () { return theoremreach_1.getTheoremReachLaunchUrl; } });
 //# sourceMappingURL=index.js.map

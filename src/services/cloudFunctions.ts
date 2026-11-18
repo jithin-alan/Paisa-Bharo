@@ -17,3 +17,16 @@ export const awardCoinsFn = httpsCallable(functions, 'awardCoins');
 // NEW: Request survey verification token for secure survey completion flow
 export const requestSurveyVerificationFn = httpsCallable(functions, 'requestSurveyVerification');
 export const reviewRedemptionFn = httpsCallable<{ redemptionId: string; status: 'completed' | 'rejected' }, { success: boolean; message: string; refunded?: boolean }>(functions, 'reviewRedemption');
+
+export interface TheoremReachLaunchResponse {
+  launchUrl: string;
+  transactionId: string;
+  appId: string;
+  currency: string;
+  exchangeRate: number;
+}
+
+export const getTheoremReachLaunchUrlFn = httpsCallable<void, TheoremReachLaunchResponse>(
+  functions,
+  'getTheoremReachLaunchUrl'
+);

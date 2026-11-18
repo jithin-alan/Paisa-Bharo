@@ -115,6 +115,44 @@ describe('Firestore Security Rules Suite', () => {
       assert.match(block, /allow get:\s*if isOwner\(userId\) \|\| isAdmin\(\);/);
       assert.match(block, /resource\.data\.uid\s*==\s*request\.auth\.uid/);
     });
+
+    it('forbids clients from setting or modifying providerBans on user documents', () => {
+      assert.match(rulesContent, /!data\.keys\(\)\.hasAny\(\['accountAge',\s*'fraudScore',\s*'suspicionFlags',\s*'providerBans'\]\)/);
+      const match = rulesContent.match(/match\s*\/users\/\{userId\}\s*\{([\s\S]*?)\}/);
+      assert.ok(match, 'match /users/{userId} block must exist');
+      assert.doesNotMatch(match[1], /'providerBans'/);
+    });
+  });
+
+  describe('TheoremReach & Provider Server-Only Collections Lockdown', () => {
+    it('denies all client reads and writes to /provider_transactions, /provider_events, and /theoremreach_sessions', () => {
+      for (const col of ['provider_transactions', 'provider_events', 'theoremreach_sessions']) {
+        const regex = new RegExp(`match\\s*\\/${col}\\/\\{[^}]+\\}\\s*\\{([\\s\\S]*?)\\}`);
+        const match = rulesContent.match(regex);
+        assert.ok(match, `match /${col}/{id} block must exist`);
+        assert.match(match[1], /allow read,\s*write:\s*if false;/);
+      }
+    });
+
+    it('rejects client writes to providerBans and theoremreach_sessions when Firestore emulator is active', async () => {
+      if (!testEnv) {
+        assert.ok(true, 'Firestore emulator unavailable in standalone CI; static rule assertions verified');
+        return;
+      }
+      const authedDb = testEnv.authenticatedContext('user_1').firestore();
+      await assertFails(
+        authedDb.collection('users').doc('user_1').set({
+          uid: 'user_1',
+          country: 'IN',
+          currency: 'INR',
+          language: 'en',
+          providerBans: { theoremreach: { banned: false } },
+        })
+      );
+      await assertFails(
+        authedDb.collection('theoremreach_sessions').doc('tr_1').set({ userId: 'user_1' })
+      );
+    });
   });
 
   describe('System Settings and Admins Security', () => {
