@@ -649,7 +649,7 @@ async function handleTheoremReachRewardHttp(req, res) {
  * Deploy URL: .../providerPostback/<provider>   (cint | adgem | bitlabs | affiliate | theoremreach | theoremreach-event)
  * Existing providers remain POST-only; TheoremReach reward callbacks accept GET only and events require POST.
  */
-exports.providerPostback = functions.https.onRequest({ secrets: [theoremreach_1.theoremreachApiKeySecret, theoremreach_1.theoremreachSecretKey] }, async (req, res) => {
+exports.providerPostback = functions.https.onRequest({ secrets: [theoremreach_1.theoremreachApiKeySecret, theoremreach_1.theoremreachSecretKey, theoremreach_1.THEOREMREACH_PARTNER_ID_SECRET] }, async (req, res) => {
     // Provider comes from the URL path (or ?provider=theoremreach when hitting root endpoint).
     const rawSegment = (req.path.split("/").filter(Boolean).pop() || "").toLowerCase();
     const queryProvider = str(req.query?.provider)?.toLowerCase() ?? "";
@@ -727,7 +727,7 @@ exports.providerPostback = functions.https.onRequest({ secrets: [theoremreach_1.
 /**
  * Dedicated TheoremReach Event Webhook endpoint (reversal / ban events).
  */
-exports.theoremreachEventWebhook = functions.https.onRequest({ secrets: [theoremreach_1.theoremreachApiKeySecret, theoremreach_1.theoremreachSecretKey] }, async (req, res) => {
+exports.theoremreachEventWebhook = functions.https.onRequest({ secrets: [theoremreach_1.theoremreachApiKeySecret, theoremreach_1.theoremreachSecretKey, theoremreach_1.THEOREMREACH_PARTNER_ID_SECRET] }, async (req, res) => {
     await handleTheoremReachEventHttp(req, res, ["theoremreachEventWebhook"]);
 });
 /**

@@ -7,6 +7,7 @@ import {
   executeTheoremReachBanEvent,
   executeTheoremReachReversalEvent,
   getTheoremReachApiKey,
+  getTheoremReachPartnerId,
   getTheoremReachSecret,
   isSafeFirestoreId,
   parseTheoremReachEventPayload,
@@ -14,6 +15,7 @@ import {
   safeEqualString,
   theoremreachApiKeySecret,
   theoremreachSecretKey,
+  THEOREMREACH_PARTNER_ID_SECRET,
   verifyTheoremReachIncomingUrl,
 } from "./theoremreach";
 
@@ -758,7 +760,7 @@ async function handleTheoremReachRewardHttp(
  * Existing providers remain POST-only; TheoremReach reward callbacks accept GET only and events require POST.
  */
 export const providerPostback = functions.https.onRequest(
-  { secrets: [theoremreachApiKeySecret, theoremreachSecretKey] },
+  { secrets: [theoremreachApiKeySecret, theoremreachSecretKey, THEOREMREACH_PARTNER_ID_SECRET] },
   async (req, res) => {
     // Provider comes from the URL path (or ?provider=theoremreach when hitting root endpoint).
     const rawSegment = (req.path.split("/").filter(Boolean).pop() || "").toLowerCase();
@@ -850,7 +852,7 @@ export const providerPostback = functions.https.onRequest(
  * Dedicated TheoremReach Event Webhook endpoint (reversal / ban events).
  */
 export const theoremreachEventWebhook = functions.https.onRequest(
-  { secrets: [theoremreachApiKeySecret, theoremreachSecretKey] },
+  { secrets: [theoremreachApiKeySecret, theoremreachSecretKey, THEOREMREACH_PARTNER_ID_SECRET] },
   async (req, res) => {
     await handleTheoremReachEventHttp(req, res, ["theoremreachEventWebhook"]);
   }

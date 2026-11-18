@@ -33,9 +33,11 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getTheoremReachLaunchUrl = exports.theoremreachSecretKey = exports.theoremreachApiKeySecret = exports.THEOREMREACH_ENTRY_BASE_URL = exports.THEOREMREACH_CURRENCY_PLURAL = exports.THEOREMREACH_CURRENCY_SINGULAR = exports.THEOREMREACH_EXCHANGE_RATE = exports.THEOREMREACH_APP_ID = void 0;
+exports.getTheoremReachLaunchUrl = exports.theoremreachSecretKey = exports.theoremreachApiKeySecret = exports.THEOREMREACH_PARTNER_ID_SECRET = exports.THEOREMREACH_ENTRY_BASE_URL = exports.THEOREMREACH_CURRENCY_PLURAL = exports.THEOREMREACH_CURRENCY_SINGULAR = exports.THEOREMREACH_EXCHANGE_RATE = exports.THEOREMREACH_APP_ID = void 0;
 exports.getTheoremReachApiKey = getTheoremReachApiKey;
 exports.getTheoremReachSecret = getTheoremReachSecret;
+exports.getTheoremReachPartnerId = getTheoremReachPartnerId;
+exports.resolveTheoremReachExternalId = resolveTheoremReachExternalId;
 exports.isSafeFirestoreId = isSafeFirestoreId;
 exports.signTheoremReachUrl = signTheoremReachUrl;
 exports.safeEqualString = safeEqualString;
@@ -58,6 +60,9 @@ exports.THEOREMREACH_EXCHANGE_RATE = 1000; // 1000 coins per $1 USD
 exports.THEOREMREACH_CURRENCY_SINGULAR = "coin";
 exports.THEOREMREACH_CURRENCY_PLURAL = "coins";
 exports.THEOREMREACH_ENTRY_BASE_URL = "https://theoremreach.com/respondent_entry/direct";
+// Placement ID from the TheoremReach publisher dashboard. Correlates to Placements.
+// Configured via Secret Manager (THEOREMREACH_PARTNER_ID) so it never lands in source.
+exports.THEOREMREACH_PARTNER_ID_SECRET = (0, params_1.defineSecret)("THEOREMREACH_PARTNER_ID");
 exports.theoremreachApiKeySecret = (0, params_1.defineSecret)("THEOREMREACH_API_KEY");
 exports.theoremreachSecretKey = (0, params_1.defineSecret)("THEOREMREACH_SECRET");
 function getTheoremReachApiKey() {
@@ -65,6 +70,37 @@ function getTheoremReachApiKey() {
 }
 function getTheoremReachSecret() {
     return exports.theoremreachSecretKey.value().trim();
+}
+/**
+ * Returns the validated TheoremReach placement/partner ID.
+ * Fails closed (empty) when the secret is unset, malformed, or whitespace-only.
+ */
+function getTheoremReachPartnerId() {
+    const raw = exports.THEOREMREACH_PARTNER_ID_SECRET.value();
+    if (typeof raw !== "string")
+        return "";
+    // Placement IDs are UUIDs; reject anything with surrounding whitespace, quotes,
+    // or characters that would break URL encoding / HMAC coverage.
+    if (raw !== raw.trim())
+        return "";
+    if (raw.length === 0)
+        return "";
+    if (/[\s"']/.test(raw))
+        return "";
+    return raw;
+}
+/**
+ * external_id is the authenticated user's stable, opaque Paisa-Bharo account
+ * identifier (the Firebase UID). It is generated per user, never configured as
+ * one global secret, and never falls back to transaction_id.
+ */
+function resolveTheoremReachExternalId(uid) {
+    if (typeof uid !== "string")
+        return "";
+    const trimmed = uid.trim();
+    if (!isSafeFirestoreId(trimmed) || trimmed === "guest_user")
+        return "";
+    return trimmed;
 }
 const MAX_COINS = 10000;
 const SAFE_FIRESTORE_ID_REGEX = /^[a-zA-Z0-9_.:-]+$/;
@@ -118,12 +154,22 @@ function safeEqualString(received, expected) {
 }
 /**
  * Builds and signs a TheoremReach respondent_entry/direct URL on the server.
+ *
+ * Parameter order matches the official TheoremReach offerwall documentation exactly:
+ *   api_key, user_id, transaction_id, currency_name_plural, currency_name_singular,
+ *   exchange_rate, external_id, partner_id, hash
+ *
+ * The HMAC-SHA1 hash covers the complete URL up to (but not including) the `hash=`
+ * parameter, so every preceding query parameter — including the new required ones —
+ * is part of the signed string.
  */
 function buildSignedTheoremReachEntryUrl(params) {
     const apiKey = params.apiKey.trim();
     const secretKey = params.secretKey;
     const userId = params.userId.trim();
     const transactionId = params.transactionId.trim();
+    const partnerId = params.partnerId ? params.partnerId.trim() : "";
+    const externalId = resolveTheoremReachExternalId(params.externalId);
     if (!apiKey)
         throw new Error("THEOREMREACH_API_KEY is required");
     if (!secretKey)
@@ -134,10 +180,21 @@ function buildSignedTheoremReachEntryUrl(params) {
     if (!isSafeFirestoreId(transactionId)) {
         throw new Error("Valid transactionId is required");
     }
+    if (!partnerId) {
+        throw new Error("THEOREMREACH_PARTNER_ID is required");
+    }
+    if (!externalId) {
+        throw new Error("Valid externalId is required");
+    }
     const queryParts = [
         `api_key=${encodeURIComponent(apiKey)}`,
         `user_id=${encodeURIComponent(userId)}`,
         `transaction_id=${encodeURIComponent(transactionId)}`,
+        `currency_name_plural=${encodeURIComponent(exports.THEOREMREACH_CURRENCY_PLURAL)}`,
+        `currency_name_singular=${encodeURIComponent(exports.THEOREMREACH_CURRENCY_SINGULAR)}`,
+        `exchange_rate=${encodeURIComponent(exports.THEOREMREACH_EXCHANGE_RATE)}`,
+        `external_id=${encodeURIComponent(externalId)}`,
+        `partner_id=${encodeURIComponent(partnerId)}`,
     ];
     if (params.extraParams) {
         for (const [key, val] of Object.entries(params.extraParams)) {
@@ -886,7 +943,8 @@ async function createTheoremReachLaunchSession(uid) {
     }
     const apiKey = getTheoremReachApiKey();
     const secretKey = getTheoremReachSecret();
-    if (!apiKey || !secretKey) {
+    const partnerId = getTheoremReachPartnerId();
+    if (!apiKey || !secretKey || !partnerId) {
         throw new functions.https.HttpsError("failed-precondition", "TheoremReach server credentials are not configured");
     }
     const userDoc = await (0, helpers_1.getUserRef)(uid).get();
@@ -904,6 +962,17 @@ async function createTheoremReachLaunchSession(uid) {
         secretKey,
         userId: uid,
         transactionId,
+        partnerId,
+        externalId: uid,
+    });
+    // Safe diagnostic logging: never prints api_key, secret, hash, or the full signed URL.
+    console.log("[TheoremReach] Launch session created", {
+        appId: exports.THEOREMREACH_APP_ID,
+        userId: uid,
+        transactionId,
+        partnerIdSet: true,
+        externalIdSource: "authenticated_uid",
+        urlParamCount: 9,
     });
     await helpers_1.db.collection("theoremreach_sessions").doc(transactionId).set({
         provider: "theoremreach",
@@ -925,7 +994,7 @@ async function createTheoremReachLaunchSession(uid) {
  * Server-side callable returning a signed TheoremReach survey launch URL for the
  * authenticated Firebase user. Never exposes THEOREMREACH_SECRET to the client.
  */
-exports.getTheoremReachLaunchUrl = functions.https.onCall({ secrets: [exports.theoremreachApiKeySecret, exports.theoremreachSecretKey] }, async (request) => {
+exports.getTheoremReachLaunchUrl = functions.https.onCall({ secrets: [exports.theoremreachApiKeySecret, exports.theoremreachSecretKey, exports.THEOREMREACH_PARTNER_ID_SECRET] }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
         throw new functions.https.HttpsError("unauthenticated", "Authentication required to launch surveys");

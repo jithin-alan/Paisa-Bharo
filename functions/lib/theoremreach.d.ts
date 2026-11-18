@@ -4,10 +4,22 @@ export declare const THEOREMREACH_EXCHANGE_RATE = 1000;
 export declare const THEOREMREACH_CURRENCY_SINGULAR = "coin";
 export declare const THEOREMREACH_CURRENCY_PLURAL = "coins";
 export declare const THEOREMREACH_ENTRY_BASE_URL = "https://theoremreach.com/respondent_entry/direct";
+export declare const THEOREMREACH_PARTNER_ID_SECRET: import("firebase-functions/lib/params/types").SecretParam;
 export declare const theoremreachApiKeySecret: import("firebase-functions/lib/params/types").SecretParam;
 export declare const theoremreachSecretKey: import("firebase-functions/lib/params/types").SecretParam;
 export declare function getTheoremReachApiKey(): string;
 export declare function getTheoremReachSecret(): string;
+/**
+ * Returns the validated TheoremReach placement/partner ID.
+ * Fails closed (empty) when the secret is unset, malformed, or whitespace-only.
+ */
+export declare function getTheoremReachPartnerId(): string;
+/**
+ * external_id is the authenticated user's stable, opaque Paisa-Bharo account
+ * identifier (the Firebase UID). It is generated per user, never configured as
+ * one global secret, and never falls back to transaction_id.
+ */
+export declare function resolveTheoremReachExternalId(uid: string): string;
 export declare function isSafeFirestoreId(value: string, minLen?: number, maxLen?: number): boolean;
 /**
  * Computes TheoremReach's documented URL signature:
@@ -21,10 +33,20 @@ export interface BuildTheoremReachEntryUrlParams {
     secretKey: string;
     userId: string;
     transactionId: string;
+    partnerId?: string;
+    externalId: string;
     extraParams?: Record<string, string | number | undefined>;
 }
 /**
  * Builds and signs a TheoremReach respondent_entry/direct URL on the server.
+ *
+ * Parameter order matches the official TheoremReach offerwall documentation exactly:
+ *   api_key, user_id, transaction_id, currency_name_plural, currency_name_singular,
+ *   exchange_rate, external_id, partner_id, hash
+ *
+ * The HMAC-SHA1 hash covers the complete URL up to (but not including) the `hash=`
+ * parameter, so every preceding query parameter — including the new required ones —
+ * is part of the signed string.
  */
 export declare function buildSignedTheoremReachEntryUrl(params: BuildTheoremReachEntryUrlParams): string;
 /**

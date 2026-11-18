@@ -169,8 +169,10 @@ function mockRes() {
 describe('Phase 3: TheoremReach Production-Readiness Security Suite', () => {
   const TEST_API_KEY = 'tr_test_api_key_25991';
   const TEST_SECRET = 'tr_test_secret_key_xyz';
+  const TEST_PARTNER_ID = '58e07c40-90ea-473a-a9d4-9734df280536';
   let prevApiKey: string | undefined;
   let prevSecret: string | undefined;
+  let prevPartnerId: string | undefined;
   let prevLivePostbacks: string | undefined;
   let prevCallbackBaseUrl: string | undefined;
   let prevCollectionDesc: PropertyDescriptor | undefined;
@@ -180,11 +182,13 @@ describe('Phase 3: TheoremReach Production-Readiness Security Suite', () => {
   beforeEach(() => {
     prevApiKey = process.env.THEOREMREACH_API_KEY;
     prevSecret = process.env.THEOREMREACH_SECRET;
+    prevPartnerId = process.env.THEOREMREACH_PARTNER_ID;
     prevLivePostbacks = process.env.PAISA_BHARO_LIVE_POSTBACKS_ENABLED;
     prevCallbackBaseUrl = process.env.THEOREMREACH_CALLBACK_BASE_URL;
 
     process.env.THEOREMREACH_API_KEY = TEST_API_KEY;
     process.env.THEOREMREACH_SECRET = TEST_SECRET;
+    process.env.THEOREMREACH_PARTNER_ID = TEST_PARTNER_ID;
     process.env.PAISA_BHARO_LIVE_POSTBACKS_ENABLED = 'false';
     delete process.env.THEOREMREACH_CALLBACK_BASE_URL;
 
@@ -215,6 +219,8 @@ describe('Phase 3: TheoremReach Production-Readiness Security Suite', () => {
     else process.env.THEOREMREACH_API_KEY = prevApiKey;
     if (prevSecret === undefined) delete process.env.THEOREMREACH_SECRET;
     else process.env.THEOREMREACH_SECRET = prevSecret;
+    if (prevPartnerId === undefined) delete process.env.THEOREMREACH_PARTNER_ID;
+    else process.env.THEOREMREACH_PARTNER_ID = prevPartnerId;
     if (prevLivePostbacks === undefined) delete process.env.PAISA_BHARO_LIVE_POSTBACKS_ENABLED;
     else process.env.PAISA_BHARO_LIVE_POSTBACKS_ENABLED = prevLivePostbacks;
     if (prevCallbackBaseUrl === undefined) delete process.env.THEOREMREACH_CALLBACK_BASE_URL;
@@ -279,6 +285,85 @@ describe('Phase 3: TheoremReach Production-Readiness Security Suite', () => {
       );
       assert.equal(evtRes.statusCode, 403);
     });
+
+    it('fails closed when THEOREMREACH_PARTNER_ID is missing or malformed', async () => {
+      memDb.seed('users', 'user_123', { uid: 'user_123', coinsBalance: 100, lifetimeEarnings: 100 });
+
+      delete process.env.THEOREMREACH_PARTNER_ID;
+      await assert.rejects(() => createTheoremReachLaunchSession('user_123'), /not configured/i);
+
+      process.env.THEOREMREACH_PARTNER_ID = ' 58e07c40-90ea-473a-a9d4-9734df280536 ';
+      await assert.rejects(() => createTheoremReachLaunchSession('user_123'), /not configured/i);
+
+      process.env.THEOREMREACH_PARTNER_ID = '"58e07c40-90ea-473a-a9d4-9734df280536"';
+      await assert.rejects(() => createTheoremReachLaunchSession('user_123'), /not configured/i);
+
+      // Direct builder also rejects missing partnerId
+      delete process.env.THEOREMREACH_PARTNER_ID;
+      assert.throws(
+        () => buildSignedTheoremReachEntryUrl({
+          apiKey: TEST_API_KEY, secretKey: TEST_SECRET,
+          userId: 'user_123', transactionId: 'tr_session_001', externalId: 'user_123',
+        }),
+        /THEOREMREACH_PARTNER_ID is required/i
+      );
+    });
+
+    it('uses the authenticated user UID as external_id and never falls back to transaction_id', () => {
+      const url = buildSignedTheoremReachEntryUrl({
+        apiKey: TEST_API_KEY, secretKey: TEST_SECRET,
+        userId: 'user_123', transactionId: 'tr_session_001', partnerId: TEST_PARTNER_ID,
+        externalId: 'user_123',
+      });
+      const params = new URLSearchParams(url.split('?')[1]);
+      assert.equal(params.get('external_id'), 'user_123');
+      assert.notEqual(params.get('external_id'), 'tr_session_001');
+    });
+
+    it('rejects an empty or invalid external_id instead of falling back to transaction_id', () => {
+      assert.throws(
+        () => buildSignedTheoremReachEntryUrl({
+          apiKey: TEST_API_KEY, secretKey: TEST_SECRET,
+          userId: 'user_123', transactionId: 'tr_session_001', partnerId: TEST_PARTNER_ID,
+          externalId: '',
+        }),
+        /Valid externalId is required/i
+      );
+      assert.throws(
+        () => buildSignedTheoremReachEntryUrl({
+          apiKey: TEST_API_KEY, secretKey: TEST_SECRET,
+          userId: 'user_123', transactionId: 'tr_session_001', partnerId: TEST_PARTNER_ID,
+          externalId: 'guest_user',
+        }),
+        /Valid externalId is required/i
+      );
+    });
+
+    it('binds THEOREMREACH_PARTNER_ID to all 3 TheoremReach functions', () => {
+      const fns = [getTheoremReachLaunchUrl, providerPostback, theoremreachEventWebhook];
+      for (const fn of fns) {
+        const endpoint = (fn as any).__endpoint;
+        const secretKeys = (endpoint?.secretEnvironmentVariables || []).map((s: any) => s.key);
+        assert.ok(secretKeys.includes('THEOREMREACH_PARTNER_ID'), 'Missing THEOREMREACH_PARTNER_ID secret binding');
+        assert.ok(!secretKeys.includes('THEOREMREACH_EXTERNAL_ID'), 'THEOREMREACH_EXTERNAL_ID must not be bound');
+      }
+    });
+
+    it('generates distinct external_ids and transaction_ids for different users', async () => {
+      memDb.seed('users', 'user_a', { uid: 'user_a', coinsBalance: 100, lifetimeEarnings: 100 });
+      memDb.seed('users', 'user_b', { uid: 'user_b', coinsBalance: 100, lifetimeEarnings: 100 });
+
+      const sessionA = await createTheoremReachLaunchSession('user_a');
+      const sessionB = await createTheoremReachLaunchSession('user_b');
+
+      const paramsA = new URLSearchParams(sessionA.launchUrl.split('?')[1]);
+      const paramsB = new URLSearchParams(sessionB.launchUrl.split('?')[1]);
+
+      assert.notEqual(paramsA.get('external_id'), paramsB.get('external_id'));
+      assert.equal(paramsA.get('external_id'), 'user_a');
+      assert.equal(paramsB.get('external_id'), 'user_b');
+      assert.notEqual(paramsA.get('transaction_id'), paramsB.get('transaction_id'));
+    });
   });
 
   describe('2. HMAC-SHA1 Signature Verification, Host Trust & Post-Hash Parameter Rejection', () => {
@@ -291,12 +376,32 @@ describe('Phase 3: TheoremReach Production-Readiness Security Suite', () => {
         secretKey: TEST_SECRET,
         userId: 'firebase_uid_991',
         transactionId: 'tr_session_001',
+        partnerId: TEST_PARTNER_ID,
+        externalId: 'firebase_uid_991',
       });
 
       assert.ok(!url.includes(TEST_SECRET), 'Secret must never appear in URL');
       assert.equal(verifyTheoremReachUrlSignature(url, TEST_SECRET), true);
       assert.equal(verifyTheoremReachUrlSignature(url, 'wrong_secret'), false);
       assert.equal(verifyTheoremReachUrlSignature(url.replace('firebase_uid_991', 'attacker_uid'), TEST_SECRET), false);
+
+      // All 9 required parameters must be present in the documented order.
+      const params = new URLSearchParams(url.split('?')[1]);
+      const orderedKeys = [
+        'api_key', 'user_id', 'transaction_id',
+        'currency_name_plural', 'currency_name_singular', 'exchange_rate',
+        'external_id', 'partner_id', 'hash',
+      ];
+      assert.deepEqual(orderedKeys, Array.from(params.keys()), 'Entry URL must carry all 9 params in documented order');
+      assert.equal(params.get('api_key'), TEST_API_KEY);
+      assert.equal(params.get('user_id'), 'firebase_uid_991');
+      assert.equal(params.get('transaction_id'), 'tr_session_001');
+      assert.equal(params.get('currency_name_plural'), 'coins');
+      assert.equal(params.get('currency_name_singular'), 'coin');
+      assert.equal(params.get('exchange_rate'), '1000');
+      assert.equal(params.get('external_id'), 'firebase_uid_991');
+      assert.equal(params.get('partner_id'), TEST_PARTNER_ID);
+      assert.equal(params.get('hash'), signTheoremReachUrl(url.split('?')[0] + '?' + url.split('?')[1].replace(/&hash=[^&]*$/, ''), TEST_SECRET));
     });
 
     it('rejects any signed URL containing additional parameters after hash, duplicate hashes, or fragments', () => {
@@ -841,7 +946,7 @@ describe('Phase 3: TheoremReach Production-Readiness Security Suite', () => {
       const adapter = new TheoremReachAdapter(async () => ({
         data: {
           launchUrl:
-            'https://theoremreach.com/respondent_entry/direct?api_key=k&user_id=uid_77&transaction_id=tr_1&hash=abc',
+            'https://theoremreach.com/respondent_entry/direct?api_key=k&user_id=uid_77&transaction_id=tr_1&currency_name_plural=coins&currency_name_singular=coin&exchange_rate=1000&external_id=tr_1&partner_id=58e07c40-90ea-473a-a9d4-9734df280536&hash=abc',
           transactionId: 'tr_1',
           appId: '25991',
           currency: 'coin',
