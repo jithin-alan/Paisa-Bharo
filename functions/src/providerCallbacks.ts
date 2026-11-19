@@ -609,15 +609,7 @@ export async function handleTheoremReachEventHttp(
         ? ["providerPostback"]
         : ["theoremreachEventWebhook"];
 
-  const rootBody = req.body && typeof req.body === "object" && !Array.isArray(req.body) ? (req.body as Record<string, unknown>) : {};
-  const dataBody = rootBody.data && typeof rootBody.data === "object" && !Array.isArray(rootBody.data) ? (rootBody.data as Record<string, unknown>) : rootBody;
-  const isTestPing =
-    dataBody.event_type === "test" ||
-    dataBody.event_type === "ping" ||
-    rootBody.test === true ||
-    req.query?.test === "true";
-
-  if (!isTestPing && !verifyTheoremReachIncomingUrl(req, secret, fnNames)) {
+  if (!verifyTheoremReachIncomingUrl(req, secret, fnNames)) {
     console.warn("[SECURITY] Rejected theoremreach event webhook: signature check failed");
     res.status(403).json({ success: false, status: "invalid_signature", error: "Invalid signature" });
     return;
@@ -628,7 +620,7 @@ export async function handleTheoremReachEventHttp(
     req.body
   );
   if (parsed.kind === "invalid") {
-    console.log("=== THEOREMREACH PARSE ERROR ===");
+    console.log("=== THEOREMREACH PARSE ERROR ====");
     console.log("Error:", parsed.error);
     console.log("Query:", JSON.stringify(req.query, null, 2));
     console.log("Body:", JSON.stringify(req.body, null, 2));
@@ -638,17 +630,18 @@ export async function handleTheoremReachEventHttp(
     return;
   }
 
-  if (parsed.kind === "test") {
-    console.log("[TheoremReach] Test webhook ping received successfully.");
+  if (parsed.kind === "test" || parsed.kind === "unhandled") {
+    console.log(`[TheoremReach] Event webhook received ${parsed.kind} event (${parsed.kind === 'unhandled' ? parsed.eventType : 'test'}). Logging and returning 200 OK.`);
     res.status(200).json({
       success: true,
-      status: "test_success",
-      message: "TheoremReach event webhook test connection successful!",
+      status: "ok",
+      message: "TheoremReach event received successfully.",
+      eventType: parsed.kind === "test" ? "test" : parsed.eventType,
     });
     return;
   }
 
-  if (!isTestPing && (!parsed.apiKey || !safeEqualString(parsed.apiKey, configuredApiKey))) {
+  if (!parsed.apiKey || !safeEqualString(parsed.apiKey, configuredApiKey)) {
     console.warn("[SECURITY] Rejected theoremreach event webhook: missing or mismatched api_key");
     res.status(403).json({ success: false, status: "invalid_signature", error: "API key verification failed" });
     return;
