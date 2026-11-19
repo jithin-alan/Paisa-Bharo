@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, ExternalLink, RefreshCw, ShieldCheck, AlertCircle, Monitor, Sparkles } from 'lucide-react';
+import { X, RefreshCw, ShieldCheck, AlertCircle, Monitor } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { theoremReachAdapter, TheoremReachLaunchSession } from '../providers/theoremReachAdapter';
 import { PaisaBharoCoin } from './Illustrations';
@@ -14,7 +14,7 @@ export const TheoremReachModal: React.FC<Props> = ({ isOpen, onClose }) => {
   const [session, setSession] = useState<TheoremReachLaunchSession | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [embedWall, setEmbedWall] = useState<boolean>(false);
+  const [embedWall, setEmbedWall] = useState<boolean>(true);
 
   const authUid = firebaseUser?.uid || user?.uid || '';
 
@@ -28,9 +28,12 @@ export const TheoremReachModal: React.FC<Props> = ({ isOpen, onClose }) => {
     setLoading(true);
     setError(null);
     try {
+      console.log('Loading TheoremReach session for user:', authUid);
       const nextSession = await theoremReachAdapter.createLaunchSession(authUid);
+      console.log('TheoremReach session created:', nextSession);
       setSession(nextSession);
     } catch (err: any) {
+      console.error('TheoremReach session error:', err);
       const message =
         err?.message ||
         'Unable to prepare a TheoremReach survey session right now. Please try again.';
@@ -46,6 +49,7 @@ export const TheoremReachModal: React.FC<Props> = ({ isOpen, onClose }) => {
       setEmbedWall(false);
       return;
     }
+    setEmbedWall(true);
     loadSignedSession();
   }, [isOpen, authUid]);
 
@@ -63,7 +67,7 @@ export const TheoremReachModal: React.FC<Props> = ({ isOpen, onClose }) => {
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-black text-base text-gray-900">
-                  TheoremReach Survey Wall
+                  Embedded Survey Wall
                 </span>
                 <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#e6f4fa] text-[#072ac8] border border-[#bde0fe]">
                   Server Verified
@@ -147,38 +151,25 @@ export const TheoremReachModal: React.FC<Props> = ({ isOpen, onClose }) => {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2.5 pt-1">
-                  <a
-                    href={session.launchUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 min-w-[200px] py-3 px-5 rounded-xl bg-gradient-to-r from-[#3c098d] to-[#072ac8] hover:opacity-95 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    <span>Open TheoremReach Surveys</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-
-                  <button
-                    type="button"
-                    onClick={() => setEmbedWall(prev => !prev)}
-                    className="px-4 py-3 rounded-xl bg-[#e6f4fa] hover:bg-[#d6eef8] text-[#072ac8] font-extrabold text-xs transition cursor-pointer flex items-center gap-1.5 border border-[#bde0fe]"
-                  >
-                    <Monitor className="w-4 h-4" />
-                    <span>{embedWall ? 'Hide Embedded Wall' : 'Open Inline Wall'}</span>
-                  </button>
+                  <div className="flex-1 text-center">
+                    <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#072ac8] bg-[#e6f4fa] px-4 py-2 rounded-xl border border-[#bde0fe]">
+                      <Monitor className="w-4 h-4" />
+                      Embedded Survey Wall Active
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {embedWall && (
-                <div className="rounded-2xl overflow-hidden border border-[#bde0fe] bg-white h-[440px]">
+              <div className="rounded-2xl overflow-hidden border border-[#bde0fe] bg-white h-[500px]">
                   <iframe
                     title="TheoremReach Survey Wall"
                     src={session.launchUrl}
                     className="w-full h-full border-0"
                     sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation"
+                    onLoad={() => console.log('TheoremReach iframe loaded')}
+                    onError={() => console.error('TheoremReach iframe error')}
                   />
                 </div>
-              )}
             </div>
           )}
         </div>

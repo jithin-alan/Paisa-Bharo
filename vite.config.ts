@@ -48,7 +48,7 @@ export default defineConfig(() => {
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         },
         devOptions: {
-          enabled: true,
+          enabled: false, // Disable PWA in development
           type: 'module',
         },
       }),

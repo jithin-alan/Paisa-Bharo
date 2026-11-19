@@ -73,7 +73,7 @@ export async function testConnection() {
   }
 }
 
-// Execute connection test
-testConnection();
+// Execute connection test (temporarily disabled for debugging)
+// testConnection();
 
 export { signInWithPopup, signOut };
