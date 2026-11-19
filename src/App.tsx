@@ -13,7 +13,6 @@ import {
   Trophy,
   Users,
   Settings,
-  ShoppingBag,
   Terminal,
   LogOut,
 } from 'lucide-react';
@@ -33,36 +32,24 @@ import { CashoutView } from './views/CashoutView';
 import { ReferView } from './views/ReferView';
 import { LeaderboardView } from './views/LeaderboardView';
 import { SettingsView } from './views/SettingsView';
-import { DealsCashbackView } from './views/DealsCashbackView';
 import { SurveyModal } from './components/SurveyModal';
-import { CintSurveyModal } from './components/CintSurveyModal';
-import { OfferwallModal } from './components/OfferwallModal';
-import { TheoremReachModal } from './components/TheoremReachModal';
-import { WebhookTesterModal } from './components/WebhookTesterModal';
+import { TheoremReachView } from './views/TheoremReachView';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { getTranslation, SUPPORTED_LANGUAGES } from './services/i18n';
-import { cintAdapter } from './providers/cintAdapter';
-import { CintSurvey } from './providers/types';
 import { PaisaBharoCoin } from './components/Illustrations';
 import { AdminConfigView } from './views/AdminConfigView';
 import { useIsAdmin } from './hooks/useIsAdmin';
 import { calculateStreakStatus } from './services/streakService';
 
-type TabType = 'home' | 'polls' | 'offers' | 'cashout' | 'leaderboard' | 'refer' | 'settings' | 'deals';
+type TabType = 'home' | 'polls' | 'offers' | 'cashout' | 'leaderboard' | 'refer' | 'settings' | 'theoremreach';
 
 const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('home');
+  const [theoremReachReturnTab, setTheoremReachReturnTab] = useState<TabType>('home');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [adminViewMode, setAdminViewMode] = useState<'admin' | 'user'>('admin');
-  
-  // Third-party provider modals
-  const [activeCintSurveyModal, setActiveCintSurveyModal] = useState<CintSurvey | null>(null);
-  const [isOfferwallOpen, setIsOfferwallOpen] = useState(false);
-  const [isTheoremReachOpen, setIsTheoremReachOpen] = useState(false);
-  const [offerwallDefaultProvider, setOfferwallDefaultProvider] = useState<'adgem' | 'bitlabs'>('adgem');
-  const [isWebhookTesterOpen, setIsWebhookTesterOpen] = useState(false);
 
   // Phone OTP sign-in
   const [phoneStep, setPhoneStep] = useState<'idle' | 'code'>('idle');
@@ -107,20 +94,9 @@ const AppContent: React.FC = () => {
   // Admin status is determined by custom claims via the useIsAdmin hook
   const { isAdmin, checked: adminChecked } = useIsAdmin();
 
-  const handleOpenCintSurvey = async (specificSurvey?: CintSurvey) => {
-    if (specificSurvey) {
-      setActiveCintSurveyModal(specificSurvey);
-    } else {
-      const uid = user?.uid || firebaseUser?.uid || 'guest';
-      const country = user?.country || 'IN';
-      const surveys = await cintAdapter.getEligibleSurveys(uid, { country });
-      setActiveCintSurveyModal(surveys[0] || null);
-    }
-  };
-
-  const handleOpenOfferwall = (provider?: 'adgem' | 'bitlabs') => {
-    if (provider) setOfferwallDefaultProvider(provider);
-    setIsOfferwallOpen(true);
+  const handleOpenTheoremReach = (fromTab: TabType = activeTab) => {
+    setTheoremReachReturnTab(fromTab === 'theoremreach' ? 'home' : fromTab);
+    setActiveTab('theoremreach');
   };
 
   const ensureRecaptcha = () => {
@@ -354,15 +330,15 @@ const AppContent: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setActiveTab('deals')}
+              onClick={() => setActiveTab('offers')}
               className={`w-9 h-9 rounded-full flex items-center justify-center transition cursor-pointer ${
-                activeTab === 'deals'
+                activeTab === 'offers' || activeTab === 'theoremreach'
                   ? 'bg-[#072ac8] text-white shadow-sm'
                   : 'text-[#6b7280] hover:text-[#072ac8] hover:bg-white/60'
               }`}
-              title="Deals & Cashback"
+              title="Offers & Surveys"
             >
-              <ShoppingBag className="w-4 h-4" />
+              <Target className="w-4 h-4" />
             </button>
 
             <button
@@ -541,35 +517,14 @@ const AppContent: React.FC = () => {
                   >
                     Leaderboard
                   </button>
-                  <div className="border-t border-gray-100 my-1" />
                   <button
                     onClick={() => {
-                      setActiveTab('deals');
+                      handleOpenTheoremReach();
                       setShowProfileMenu(false);
                     }}
                     className="w-full px-4 py-2 text-left text-gray-700 hover:bg-[#e6f4fa] hover:text-[#072ac8] transition font-medium flex items-center justify-between"
                   >
-                    <span>🛍️ Deals & Cashback</span>
-                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded">New</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleOpenOfferwall();
-                      setShowProfileMenu(false);
-                    }}
-                    className="w-full px-4 py-2 text-left text-gray-700 hover:bg-[#e6f4fa] hover:text-[#072ac8] transition font-medium flex items-center justify-between"
-                  >
-                    <span>🎮 Offerwall</span>
-                    <span className="text-[10px] bg-[#fff0db] text-[#b05d00] font-bold px-1.5 py-0.5 rounded">AdGem/BL</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIsWebhookTesterOpen(true);
-                      setShowProfileMenu(false);
-                    }}
-                    className="w-full px-4 py-2 text-left text-gray-700 hover:bg-[#e6f4fa] hover:text-[#072ac8] transition font-medium flex items-center justify-between"
-                  >
-                    <span>⚡ S2S Webhook Tester</span>
+                    <span>📋 TheoremReach Surveys</span>
                   </button>
                   <div className="border-t border-gray-100 my-1" />
                   <button
@@ -613,15 +568,16 @@ const AppContent: React.FC = () => {
         {activeTab === 'home' && (
           <HomeDashboardView
             onNavigateTab={setActiveTab}
-            onOpenOfferwall={handleOpenOfferwall}
-            onOpenCintSurvey={handleOpenCintSurvey}
-            onOpenTheoremReach={() => setIsTheoremReachOpen(true)}
-            onOpenWebhookTester={() => setIsWebhookTesterOpen(true)}
+            onOpenTheoremReach={() => handleOpenTheoremReach('home')}
           />
         )}
         {activeTab === 'polls' && <PollsView />}
-        {activeTab === 'offers' && <OffersView />}
-        {activeTab === 'deals' && <DealsCashbackView />}
+        {activeTab === 'offers' && (
+          <OffersView onOpenTheoremReach={() => handleOpenTheoremReach('offers')} />
+        )}
+        {activeTab === 'theoremreach' && (
+          <TheoremReachView onBack={() => setActiveTab(theoremReachReturnTab)} />
+        )}
         {activeTab === 'cashout' && <CashoutView />}
         {activeTab === 'leaderboard' && <LeaderboardView />}
         {activeTab === 'refer' && <ReferView />}
@@ -630,31 +586,6 @@ const AppContent: React.FC = () => {
 
       {/* Survey Runner Modal (Global) */}
       <SurveyModal />
-
-      {/* Cint Survey Supply Modal */}
-      <CintSurveyModal
-        survey={activeCintSurveyModal}
-        onClose={() => setActiveCintSurveyModal(null)}
-      />
-
-      {/* Unified AdGem & BitLabs Offerwall Modal */}
-      <OfferwallModal
-        isOpen={isOfferwallOpen}
-        onClose={() => setIsOfferwallOpen(false)}
-        defaultProvider={offerwallDefaultProvider}
-      />
-
-      {/* TheoremReach Server-Signed Survey Wall Modal */}
-      <TheoremReachModal
-        isOpen={isTheoremReachOpen}
-        onClose={() => setIsTheoremReachOpen(false)}
-      />
-
-      {/* S2S Webhook & Postback Developer Simulator */}
-      <WebhookTesterModal
-        isOpen={isWebhookTesterOpen}
-        onClose={() => setIsWebhookTesterOpen(false)}
-      />
 
       {/* Connectivity Indicator */}
       <OfflineIndicator language={selectedLanguage} />
@@ -666,7 +597,6 @@ const AppContent: React.FC = () => {
             { id: 'home', label: 'Home', icon: Home },
             { id: 'polls', label: getTranslation(selectedLanguage, 'pollsTab'), icon: Vote },
             { id: 'offers', label: getTranslation(selectedLanguage, 'offersTab'), icon: Target },
-            { id: 'deals', label: 'Cashback', icon: ShoppingBag },
             { id: 'cashout', label: getTranslation(selectedLanguage, 'rewardsTab'), icon: Gift },
             { id: 'refer', label: getTranslation(selectedLanguage, 'referTab'), icon: Users },
             { id: 'settings', label: getTranslation(selectedLanguage, 'profileTab'), icon: Settings },

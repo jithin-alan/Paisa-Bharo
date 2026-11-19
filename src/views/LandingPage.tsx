@@ -562,18 +562,41 @@ export const LandingPage: React.FC<Props> = ({
                     <span className="text-red-500 font-bold">!</span> Google Sign-In Notice
                   </div>
                   <div>{googleError}</div>
-                  {(googleError.toLowerCase().includes('pop-up') ||
-                    googleError.toLowerCase().includes('tab') ||
-                    googleError.toLowerCase().includes('domain') ||
-                    googleError.toLowerCase().includes('block')) && (
-                    <a
-                      href={window.location.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block mt-1 text-xs text-[#072ac8] font-bold underline hover:text-[#05219e]"
-                    >
-                      Open app in a new browser tab &rarr;
-                    </a>
+                  {googleError.toLowerCase().includes('not authorized') ? (
+                    <div className="space-y-1.5 pt-1">
+                      {typeof window !== 'undefined' && (
+                        <div className="text-[11px] text-gray-700">
+                          Domain to authorize:{' '}
+                          <code className="px-1.5 py-0.5 rounded bg-white border border-red-200 font-mono text-[11px] select-all">
+                            {window.location.hostname}
+                          </code>
+                        </div>
+                      )}
+                      {typeof window !== 'undefined' &&
+                        window.location.hostname !== 'paisa-bharo-app.web.app' && (
+                          <a
+                            href="https://paisa-bharo-app.web.app"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-block text-xs text-[#072ac8] font-bold underline hover:text-[#05219e]"
+                          >
+                            Open authorized app (paisa-bharo-app.web.app) &rarr;
+                          </a>
+                        )}
+                    </div>
+                  ) : (
+                    (googleError.toLowerCase().includes('pop-up') ||
+                      googleError.toLowerCase().includes('tab') ||
+                      googleError.toLowerCase().includes('block')) && (
+                      <a
+                        href={window.location.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block mt-1 text-xs text-[#072ac8] font-bold underline hover:text-[#05219e]"
+                      >
+                        Open app in a new browser tab &rarr;
+                      </a>
+                    )
                   )}
                 </div>
               )}

@@ -3,9 +3,13 @@ import { onIdTokenChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth } from '../firebase/config';
 
 async function checkAdminStatus(user: FirebaseUser): Promise<boolean> {
-  // Check custom claims (production approach)
-  const result = await user.getIdTokenResult();
-  return result.claims.admin === true;
+  try {
+    // Check custom claims (production approach)
+    const result = await user.getIdTokenResult();
+    return result.claims.admin === true;
+  } catch {
+    return false;
+  }
 }
 
 export function useIsAdmin() {
@@ -20,6 +24,7 @@ export function useIsAdmin() {
       const user = auth.currentUser;
       if (user && mounted) {
         const adminStatus = await checkAdminStatus(user);
+        if (!mounted) return;
         setIsAdmin(adminStatus);
         setChecked(true);
       } else if (!user && mounted) {
@@ -39,6 +44,7 @@ export function useIsAdmin() {
       }
 
       const adminStatus = await checkAdminStatus(user);
+      if (!mounted) return;
       setIsAdmin(adminStatus);
       setChecked(true);
     });

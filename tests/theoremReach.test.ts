@@ -349,20 +349,29 @@ describe('Phase 3: TheoremReach Production-Readiness Security Suite', () => {
       }
     });
 
-    it('generates distinct external_ids and transaction_ids for different users', async () => {
+    it('generates distinct user_ids, external_ids, and transaction_ids for different authenticated accounts', async () => {
       memDb.seed('users', 'user_a', { uid: 'user_a', coinsBalance: 100, lifetimeEarnings: 100 });
       memDb.seed('users', 'user_b', { uid: 'user_b', coinsBalance: 100, lifetimeEarnings: 100 });
 
-      const sessionA = await createTheoremReachLaunchSession('user_a');
-      const sessionB = await createTheoremReachLaunchSession('user_b');
+      const sessionA = await getTheoremReachLaunchUrl.run({ auth: { uid: 'user_a' }, data: {} } as any);
+      const sessionB = await getTheoremReachLaunchUrl.run({ auth: { uid: 'user_b' }, data: {} } as any);
 
       const paramsA = new URLSearchParams(sessionA.launchUrl.split('?')[1]);
       const paramsB = new URLSearchParams(sessionB.launchUrl.split('?')[1]);
 
-      assert.notEqual(paramsA.get('external_id'), paramsB.get('external_id'));
+      assert.equal(paramsA.get('user_id'), 'user_a');
       assert.equal(paramsA.get('external_id'), 'user_a');
+      assert.equal(paramsB.get('user_id'), 'user_b');
       assert.equal(paramsB.get('external_id'), 'user_b');
+
+      assert.notEqual(paramsA.get('user_id'), paramsB.get('user_id'));
+      assert.notEqual(paramsA.get('external_id'), paramsB.get('external_id'));
       assert.notEqual(paramsA.get('transaction_id'), paramsB.get('transaction_id'));
+
+      assert.equal(memDb.getDocData('theoremreach_sessions', sessionA.transactionId)?.userId, 'user_a');
+      assert.equal(memDb.getDocData('theoremreach_sessions', sessionA.transactionId)?.externalId, 'user_a');
+      assert.equal(memDb.getDocData('theoremreach_sessions', sessionB.transactionId)?.userId, 'user_b');
+      assert.equal(memDb.getDocData('theoremreach_sessions', sessionB.transactionId)?.externalId, 'user_b');
     });
   });
 
@@ -942,11 +951,11 @@ describe('Phase 3: TheoremReach Production-Readiness Security Suite', () => {
       delete process.env.AFFILIATE_SECRET;
     });
 
-    it('rejects unauthenticated/guest users and consumes server-signed launch URLs in TheoremReachAdapter', async () => {
+    it('rejects unauthenticated/guest users and enforces strict UID matching in TheoremReachAdapter', async () => {
       const adapter = new TheoremReachAdapter(async () => ({
         data: {
           launchUrl:
-            'https://theoremreach.com/respondent_entry/direct?api_key=k&user_id=uid_77&transaction_id=tr_1&currency_name_plural=coins&currency_name_singular=coin&exchange_rate=1000&external_id=tr_1&partner_id=58e07c40-90ea-473a-a9d4-9734df280536&hash=abc',
+            'https://theoremreach.com/respondent_entry/direct?api_key=k&user_id=uid_77&transaction_id=tr_1&currency_name_plural=coins&currency_name_singular=coin&exchange_rate=1000&external_id=uid_77&partner_id=58e07c40-90ea-473a-a9d4-9734df280536&hash=abc',
           transactionId: 'tr_1',
           appId: '25991',
           currency: 'coin',
@@ -959,6 +968,8 @@ describe('Phase 3: TheoremReach Production-Readiness Security Suite', () => {
 
       const session = await adapter.createLaunchSession('uid_77');
       assert.equal(session.provider, 'theoremreach');
+      assert.equal(session.verifiedUserId, 'uid_77');
+      assert.equal(session.verifiedExternalId, 'uid_77');
       assert.equal(session.appId, '25991');
       assert.equal(session.currency, 'coin');
       assert.equal(session.exchangeRate, 1000);
@@ -974,6 +985,42 @@ describe('Phase 3: TheoremReach Production-Readiness Security Suite', () => {
         },
       }));
       await assert.rejects(() => badServerAdapter.createLaunchSession('uid_77'), /invalid TheoremReach launch URL/i);
+
+      const wrongUserIdAdapter = new TheoremReachAdapter(async () => ({
+        data: {
+          launchUrl:
+            'https://theoremreach.com/respondent_entry/direct?api_key=k&user_id=uid_other&transaction_id=tr_1&currency_name_plural=coins&currency_name_singular=coin&exchange_rate=1000&external_id=uid_77&partner_id=58e07c40-90ea-473a-a9d4-9734df280536&hash=abc',
+          transactionId: 'tr_1',
+          appId: '25991',
+          currency: 'coin',
+          exchangeRate: 1000,
+        },
+      }));
+      await assert.rejects(() => wrongUserIdAdapter.createLaunchSession('uid_77'), /user identity mismatch/i);
+
+      const wrongExternalIdAdapter = new TheoremReachAdapter(async () => ({
+        data: {
+          launchUrl:
+            'https://theoremreach.com/respondent_entry/direct?api_key=k&user_id=uid_77&transaction_id=tr_1&currency_name_plural=coins&currency_name_singular=coin&exchange_rate=1000&external_id=tr_1&partner_id=58e07c40-90ea-473a-a9d4-9734df280536&hash=abc',
+          transactionId: 'tr_1',
+          appId: '25991',
+          currency: 'coin',
+          exchangeRate: 1000,
+        },
+      }));
+      await assert.rejects(() => wrongExternalIdAdapter.createLaunchSession('uid_77'), /user identity mismatch/i);
+
+      const wrongTxAdapter = new TheoremReachAdapter(async () => ({
+        data: {
+          launchUrl:
+            'https://theoremreach.com/respondent_entry/direct?api_key=k&user_id=uid_77&transaction_id=tr_wrong&currency_name_plural=coins&currency_name_singular=coin&exchange_rate=1000&external_id=uid_77&partner_id=58e07c40-90ea-473a-a9d4-9734df280536&hash=abc',
+          transactionId: 'tr_1',
+          appId: '25991',
+          currency: 'coin',
+          exchangeRate: 1000,
+        },
+      }));
+      await assert.rejects(() => wrongTxAdapter.createLaunchSession('uid_77'), /transaction mismatch/i);
     });
   });
 });

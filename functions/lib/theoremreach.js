@@ -965,20 +965,31 @@ async function createTheoremReachLaunchSession(uid) {
         partnerId,
         externalId: uid,
     });
-    // Safe diagnostic logging: never prints api_key, secret, hash, or the full signed URL.
+    const parsedLaunch = new URL(launchUrl);
+    const urlUserId = parsedLaunch.searchParams.get("user_id") ?? "";
+    const urlExternalId = parsedLaunch.searchParams.get("external_id") ?? "";
+    const urlTransactionId = parsedLaunch.searchParams.get("transaction_id") ?? "";
+    if (urlUserId !== uid || urlExternalId !== uid || urlTransactionId !== transactionId) {
+        throw new functions.https.HttpsError("internal", "TheoremReach launch URL user isolation check failed");
+    }
+    // Safe diagnostic logging: never prints api_key, secret, partner_id, hash, or the full signed URL.
     console.log("[TheoremReach] Launch session created", {
         appId: exports.THEOREMREACH_APP_ID,
         userId: uid,
+        urlUserId,
+        urlExternalId,
+        uidIsolated: urlUserId === uid && urlExternalId === uid,
         transactionId,
         partnerIdSet: true,
         externalIdSource: "authenticated_uid",
-        urlParamCount: 9,
+        urlParamCount: Array.from(parsedLaunch.searchParams.keys()).length,
     });
     await helpers_1.db.collection("theoremreach_sessions").doc(transactionId).set({
         provider: "theoremreach",
         appId: exports.THEOREMREACH_APP_ID,
         transactionId,
         userId: uid,
+        externalId: uid,
         status: "launched",
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });

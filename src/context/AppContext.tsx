@@ -79,27 +79,7 @@ function placeholderReferralCode(): string {
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [user, setUser] = useState<UserProfile | null>(() => {
-    const saved = localStorage.getItem('paisabhar_user');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as UserProfile;
-        // Ensure all required fields have defaults (for when user is loaded from localStorage
-        // before Firestore sync completes or for backwards compatibility)
-        // Spread parsed FIRST, then override with defaults to ensure undefined values get defaults
-        return {
-          ...parsed,
-          coinsBalance: parsed.coinsBalance ?? 0,
-          lifetimeEarnings: parsed.lifetimeEarnings ?? 0,
-          streakDays: parsed.streakDays ?? 0,
-          isAdmin: false, // Set from custom claims in useIsAdmin hook
-        };
-      } catch {
-        // fallback
-      }
-    }
-    return null;
-  });
+  const [user, setUser] = useState<UserProfile | null>(null);
 
   const [selectedLanguage, setSelectedLanguage] = useState<string>(() => {
     return localStorage.getItem('paisabhar_lang') || 'en';
@@ -390,7 +370,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const clearToast = () => setToast(null);
 
   useEffect(() => {
-    localStorage.setItem('paisabhar_user', JSON.stringify(user));
+    if (user) {
+      localStorage.setItem('paisabhar_user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('paisabhar_user');
+    }
   }, [user]);
 
   useEffect(() => {
@@ -421,30 +405,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Auth observer and Firestore profile sync.
   // Admin status is determined by custom claims via useIsAdmin hook.
   useEffect(() => {
+    let authEpoch = 0;
+
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      const currentEpoch = ++authEpoch;
       setFirebaseUser(fbUser);
       setAuthLoading(false);
 
-      // Clear any previous user state to avoid stale sessions
+      // Clear any previous user state synchronously to avoid stale sessions across account switches
       setUser(null);
 
       if (fbUser) {
-        // Log user info for debugging
-        console.log('🔐 User logged in:', {
-          uid: fbUser.uid,
-          email: fbUser.email,
-          displayName: fbUser.displayName,
-        });
         try {
           const userDocRef = doc(db, 'users', fbUser.uid);
           const snap = await getDoc(userDocRef);
+          if (currentEpoch !== authEpoch) return;
 
           if (snap.exists()) {
             const data = snap.data() as UserProfile;
-            // isAdmin comes from custom claims, not from email matching
-            // The useIsAdmin hook handles the authoritative check
             setUser({
               ...data,
+              uid: fbUser.uid,
               isAdmin: false, // Will be corrected by useIsAdmin hook based on custom claims
             });
             if (data.language) setSelectedLanguage(data.language);
@@ -467,6 +448,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             } catch (setErr) {
               console.warn('Profile write notice (handled):', setErr);
             }
+            if (currentEpoch !== authEpoch) return;
 
             // Local display state - coinsBalance, lifetimeEarnings, streakDays should be
             // set by server/cloud functions, not client-side
@@ -481,6 +463,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             } as UserProfile);
           }
         } catch (err) {
+          if (currentEpoch !== authEpoch) return;
           console.warn('Firestore user fetch/create notice:', err);
           setUser({
             uid: fbUser.uid,
@@ -499,13 +482,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           } as UserProfile);
         }
       } else {
-        // User signed out - clear all state
         setUser(null);
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      authEpoch++;
+      unsubscribe();
+    };
   }, []);
+
+  // Keep the active authenticated user's wallet profile synced live per UID
+  useEffect(() => {
+    const uid = firebaseUser?.uid;
+    if (!uid) return;
+
+    const userDocRef = doc(db, 'users', uid);
+    const unsub = onSnapshot(
+      userDocRef,
+      (snap) => {
+        if (!snap.exists()) return;
+        const data = snap.data() as UserProfile;
+        setUser({
+          ...data,
+          uid,
+          isAdmin: false,
+        });
+      },
+      (err) => {
+        console.warn('User profile listener notice:', err);
+      }
+    );
+
+    return () => unsub();
+  }, [firebaseUser?.uid]);
 
   const triggerConfetti = () => {
     try {
@@ -867,25 +877,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       showToast(`Welcome, ${res.user.displayName || res.user.email || 'Friend'}!`, undefined, 'success');
       return { success: true };
     } catch (error: any) {
-      console.error('Google Sign-In failed:', error);
       const code = error?.code || '';
+      const host = typeof window !== 'undefined' ? window.location.hostname : 'this domain';
       let userMsg = error?.message || 'Google Sign-In failed';
+      let toastType: 'error' | 'info' = 'error';
 
       if (code === 'auth/popup-blocked') {
         userMsg = 'Google Sign-In pop-up was blocked by your browser. Please allow pop-ups for this site or open the app in a new tab.';
       } else if (code === 'auth/unauthorized-domain') {
-        userMsg = `Domain (${window.location.hostname}) is not authorized in Firebase Auth. Add it to Authorized Domains in Firebase Console > Authentication > Settings.`;
+        userMsg = `Domain (${host}) is not authorized in Firebase Auth. Add "${host}" under Firebase Console > Authentication > Settings > Authorized domains, or sign in with Phone or Email.`;
       } else if (code === 'auth/operation-not-allowed') {
         userMsg = 'Google Sign-In is disabled in your Firebase project. Please enable Google under Authentication > Sign-in method in Firebase Console.';
       } else if (code === 'auth/popup-closed-by-user') {
         userMsg = 'Sign-in cancelled: The Google popup window was closed.';
+        toastType = 'info';
       } else if (code === 'auth/cancelled-popup-request') {
         userMsg = 'Another sign-in window is already open. Please complete or close it.';
+        toastType = 'info';
       } else if (code === 'auth/network-request-failed') {
         userMsg = 'Network error during Google Sign-In. Please check your connection.';
       }
 
-      showToast(userMsg, undefined, 'error');
+      console.warn(`Google Sign-In notice [${code || 'unknown'}]: ${userMsg}`);
+      showToast(userMsg, undefined, toastType);
       return { success: false, error: userMsg, errorCode: code };
     } finally {
       setGoogleAuthLoading(false);
@@ -896,10 +910,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('paisabhar_user');
+        localStorage.removeItem('paisabhar_polls');
+        localStorage.removeItem('paisabhar_surveys');
+        localStorage.removeItem('paisabhar_redemptions');
+        localStorage.removeItem('paisabhar_last_scratch');
+        localStorage.removeItem('paisabhar_claimed_offers');
       }
       await signOut(auth);
       setFirebaseUser(null);
       setUser(null);
+      setPolls(INITIAL_POLLS);
+      setSurveys(INITIAL_SURVEYS);
+      setRedemptions([]);
     } catch (error) {
       console.error('Sign-Out error:', error);
     }

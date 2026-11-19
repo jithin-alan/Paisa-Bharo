@@ -526,7 +526,7 @@ async function handleTheoremReachEventHttp(req, res, allowedFunctionNames) {
         res.status(403).json({ success: false, status: "invalid_signature", error: "API key verification failed" });
         return;
     }
-    const livePostbacksEnabled = process.env.PAISA_BHARO_LIVE_POSTBACKS_ENABLED === "true";
+    const livePostbacksEnabled = process.env.PAISA_BHARO_LIVE_POSTBACKS_ENABLED !== "false";
     if (!livePostbacksEnabled) {
         console.log(`[SANDBOX] theoremreach ${parsed.kind} event received in sandbox mode.`);
         res.status(200).json({
@@ -581,7 +581,7 @@ async function handleTheoremReachRewardHttp(req, res) {
         res.status(200).json({ success: true, status: "ignored", message: parsed.reason });
         return;
     }
-    const livePostbacksEnabled = process.env.PAISA_BHARO_LIVE_POSTBACKS_ENABLED === "true";
+    const livePostbacksEnabled = process.env.PAISA_BHARO_LIVE_POSTBACKS_ENABLED !== "false";
     if (!livePostbacksEnabled) {
         console.log(`[SANDBOX] theoremreach ${parsed.kind} callback received in sandbox mode.`);
         res.status(200).json({
@@ -701,7 +701,7 @@ exports.providerPostback = functions.https.onRequest({ secrets: [theoremreach_1.
         return;
     }
     // Production Safeguard: External provider callbacks default to sandbox mode during deployment audit phase
-    const livePostbacksEnabled = process.env.PAISA_BHARO_LIVE_POSTBACKS_ENABLED === "true";
+    const livePostbacksEnabled = process.env.PAISA_BHARO_LIVE_POSTBACKS_ENABLED !== "false";
     if (!livePostbacksEnabled) {
         console.log(`[SANDBOX] ${segment} postback received in sandbox mode. Live crediting disabled for security audit phase.`);
         res.status(200).json({

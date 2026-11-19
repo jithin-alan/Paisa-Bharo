@@ -1,19 +1,19 @@
 import React, { useState } from 'react';
-import { Target, CheckCircle2, ChevronRight, Zap, ExternalLink, ShieldCheck, X, Gamepad2 } from 'lucide-react';
+import { Target, CheckCircle2, ChevronRight, Zap, ExternalLink, ShieldCheck, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getTranslation } from '../services/i18n';
 import { formatCoinsValue } from '../services/currencies';
 import { Offer } from '../types';
 import { PaisaBharoCoin } from '../components/Illustrations';
-import { OfferwallModal } from '../components/OfferwallModal';
-import { TheoremReachModal } from '../components/TheoremReachModal';
 
-export const OffersView: React.FC = () => {
-  const { offers, selectedLanguage, selectedCurrency, votePoll, activeOfferwallProvider } = useApp();
+interface OffersViewProps {
+  onOpenTheoremReach?: () => void;
+}
+
+export const OffersView: React.FC<OffersViewProps> = ({ onOpenTheoremReach }) => {
+  const { offers, selectedLanguage, selectedCurrency, votePoll } = useApp();
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('all');
-  const [isOfferwallOpen, setIsOfferwallOpen] = useState(false);
-  const [isTheoremReachOpen, setIsTheoremReachOpen] = useState(false);
   const [claimedTasks, setClaimedTasks] = useState<string[]>(() => {
     const saved = localStorage.getItem('paisabhar_claimed_offers');
     return saved ? JSON.parse(saved) : [];
@@ -73,32 +73,6 @@ export const OffersView: React.FC = () => {
         </div>
       </div>
 
-      {/* Offerwall Hub Card: AdGem & BitLabs */}
-      <div className="bg-gradient-to-r from-[#072ac8] to-[#0096c7] rounded-[24px] p-5 sm:p-6 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg shadow-[#072ac8]/20">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="bg-white/20 backdrop-blur-md text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
-              Featured Offerwall: {activeOfferwallProvider.toUpperCase()}
-            </span>
-            <span className="text-[#ffd099] text-xs font-black">Up to 5,000 🪙</span>
-          </div>
-          <h3 className="text-lg font-black tracking-tight">
-            Play Trending Games & Unlock Mega Rewards
-          </h3>
-          <p className="text-xs text-white/80 max-w-md">
-            Rise of Kingdoms, Coin Master, Bingo Blitz, and top apps with instant S2S postback tracking.
-          </p>
-        </div>
-
-        <button
-          onClick={() => setIsOfferwallOpen(true)}
-          className="bg-white hover:bg-[#fff0db] text-[#fb8500] font-black text-xs px-5 py-3 rounded-xl shadow-md transition cursor-pointer flex items-center gap-1.5 shrink-0 active:scale-95"
-        >
-          <Gamepad2 className="w-4 h-4 text-[#fb8500]" />
-          <span>Launch Offerwall</span>
-        </button>
-      </div>
-
       {/* TheoremReach Survey Offerwall Entry Card */}
       <div className="bg-gradient-to-r from-[#3c098d] to-[#072ac8] rounded-[24px] p-5 sm:p-6 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg shadow-[#3c098d]/20">
         <div className="space-y-1">
@@ -117,11 +91,11 @@ export const OffersView: React.FC = () => {
         </div>
 
         <button
-          onClick={() => setIsTheoremReachOpen(true)}
+          onClick={() => onOpenTheoremReach?.()}
           className="bg-white hover:bg-[#e6f4fa] text-[#3c098d] font-black text-xs px-5 py-3 rounded-xl shadow-md transition cursor-pointer flex items-center gap-1.5 shrink-0 active:scale-95"
         >
-          <ExternalLink className="w-4 h-4 text-[#3c098d]" />
           <span>Start TheoremReach</span>
+          <ChevronRight className="w-4 h-4 text-[#3c098d]" />
         </button>
       </div>
 
@@ -291,17 +265,6 @@ export const OffersView: React.FC = () => {
         </div>
       )}
 
-      {/* Offerwall Modal */}
-      <OfferwallModal
-        isOpen={isOfferwallOpen}
-        onClose={() => setIsOfferwallOpen(false)}
-      />
-
-      {/* TheoremReach Survey Wall Modal */}
-      <TheoremReachModal
-        isOpen={isTheoremReachOpen}
-        onClose={() => setIsTheoremReachOpen(false)}
-      />
     </div>
   );
 };

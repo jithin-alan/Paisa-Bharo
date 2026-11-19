@@ -24,6 +24,15 @@ export const SettingsView: React.FC = () => {
 
   const [legalModalOpen, setLegalModalOpen] = useState(false);
   const [selectedLegalTab, setSelectedLegalTab] = useState<LegalTabType>('privacy');
+  const [googleError, setGoogleError] = useState('');
+
+  const handleGoogleLogin = async () => {
+    setGoogleError('');
+    const res = await loginWithGoogle();
+    if (!res.success && res.error) {
+      setGoogleError(res.error);
+    }
+  };
 
   const openLegalModal = (tab: LegalTabType) => {
     setSelectedLegalTab(tab);
@@ -68,39 +77,47 @@ export const SettingsView: React.FC = () => {
         </div>
 
         {/* Auth Action Button */}
-        <div className="pt-3 border-t border-gray-100 flex flex-col sm:flex-row items-center gap-2">
-          {firebaseUser ? (
-            <button
-              onClick={logout}
-              className="flex-1 py-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-red-500 font-bold text-xs flex items-center justify-center gap-2 border border-gray-200 transition cursor-pointer"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>{getTranslation(selectedLanguage, 'signOut')}</span>
-            </button>
-          ) : (
-            <button
-              onClick={loginWithGoogle}
-              disabled={googleAuthLoading}
-              className="flex-1 py-3 rounded-xl bg-[#072ac8] hover:bg-[#05219e] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(7,42,200,0.3)] transition cursor-pointer active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {googleAuthLoading ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <svg className="w-4 h-4 fill-white" viewBox="0 0 24 24">
-                  <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" />
-                </svg>
-              )}
-              <span>{googleAuthLoading ? 'Opening Google...' : getTranslation(selectedLanguage, 'signInWithGoogle')}</span>
-            </button>
-          )}
+        <div className="pt-3 border-t border-gray-100 space-y-2">
+          <div className="flex flex-col sm:flex-row items-center gap-2">
+            {firebaseUser ? (
+              <button
+                onClick={logout}
+                className="flex-1 py-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-red-500 font-bold text-xs flex items-center justify-center gap-2 border border-gray-200 transition cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>{getTranslation(selectedLanguage, 'signOut')}</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleGoogleLogin}
+                disabled={googleAuthLoading}
+                className="flex-1 py-3 rounded-xl bg-[#072ac8] hover:bg-[#05219e] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(7,42,200,0.3)] transition cursor-pointer active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {googleAuthLoading ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg className="w-4 h-4 fill-white" viewBox="0 0 24 24">
+                    <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" />
+                  </svg>
+                )}
+                <span>{googleAuthLoading ? 'Opening Google...' : getTranslation(selectedLanguage, 'signInWithGoogle')}</span>
+              </button>
+            )}
 
-          <button
-            onClick={() => openLegalModal('deletion')}
-            className="py-2.5 px-4 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs flex items-center justify-center gap-1.5 border border-red-200 transition cursor-pointer shrink-0"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Delete Data</span>
-          </button>
+            <button
+              onClick={() => openLegalModal('deletion')}
+              className="py-2.5 px-4 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs flex items-center justify-center gap-1.5 border border-red-200 transition cursor-pointer shrink-0"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete Data</span>
+            </button>
+          </div>
+
+          {googleError && (
+            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs">
+              {googleError}
+            </div>
+          )}
         </div>
       </div>
 
@@ -192,7 +209,7 @@ export const SettingsView: React.FC = () => {
             <ShieldCheck className="w-4 h-4 text-[#072ac8] shrink-0" />
             <div className="min-w-0">
               <span className="text-xs font-black text-gray-900 block group-hover:text-[#072ac8]">Privacy Policy & Data Rights</span>
-              <span className="text-[10px] text-gray-500 block truncate">Data collection, Cint/AdGem/BitLabs disclosures</span>
+              <span className="text-[10px] text-gray-500 block truncate">Data collection &amp; TheoremReach survey disclosures</span>
             </div>
           </button>
 
