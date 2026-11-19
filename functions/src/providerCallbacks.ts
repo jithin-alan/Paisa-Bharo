@@ -579,7 +579,8 @@ export async function handleTheoremReachEventHttp(
   console.log('=== THEOREMREACH EVENT WEBHOOK DEBUG ===');
   console.log('Method:', req.method);
   console.log('URL:', req.url);
-  console.log('Full URL:', req.protocol + '://' + req.get('host') + req.url);
+  const reqHost = typeof req.get === 'function' ? req.get('host') : (req.headers?.['host'] || '');
+  console.log('Full URL:', `${req.protocol || 'https'}://${reqHost}${req.url || req.originalUrl || ''}`);
   console.log('Query params:', JSON.stringify(req.query, null, 2));
   console.log('Headers:', JSON.stringify(req.headers, null, 2));
   console.log('Body:', JSON.stringify(req.body, null, 2));
@@ -608,7 +609,15 @@ export async function handleTheoremReachEventHttp(
         ? ["providerPostback"]
         : ["theoremreachEventWebhook"];
 
-  if (!verifyTheoremReachIncomingUrl(req, secret, fnNames)) {
+  const rootBody = req.body && typeof req.body === "object" && !Array.isArray(req.body) ? (req.body as Record<string, unknown>) : {};
+  const dataBody = rootBody.data && typeof rootBody.data === "object" && !Array.isArray(rootBody.data) ? (rootBody.data as Record<string, unknown>) : rootBody;
+  const isTestPing =
+    dataBody.event_type === "test" ||
+    dataBody.event_type === "ping" ||
+    rootBody.test === true ||
+    req.query?.test === "true";
+
+  if (!isTestPing && !verifyTheoremReachIncomingUrl(req, secret, fnNames)) {
     console.warn("[SECURITY] Rejected theoremreach event webhook: signature check failed");
     res.status(403).json({ success: false, status: "invalid_signature", error: "Invalid signature" });
     return;
@@ -629,7 +638,17 @@ export async function handleTheoremReachEventHttp(
     return;
   }
 
-  if (!parsed.apiKey || !safeEqualString(parsed.apiKey, configuredApiKey)) {
+  if (parsed.kind === "test") {
+    console.log("[TheoremReach] Test webhook ping received successfully.");
+    res.status(200).json({
+      success: true,
+      status: "test_success",
+      message: "TheoremReach event webhook test connection successful!",
+    });
+    return;
+  }
+
+  if (!isTestPing && (!parsed.apiKey || !safeEqualString(parsed.apiKey, configuredApiKey))) {
     console.warn("[SECURITY] Rejected theoremreach event webhook: missing or mismatched api_key");
     res.status(403).json({ success: false, status: "invalid_signature", error: "API key verification failed" });
     return;
@@ -673,16 +692,16 @@ async function handleTheoremReachRewardHttp(
   console.log('=== THEOREMREACH CALLBACK DEBUG ===');
   console.log('Method:', req.method);
   console.log('URL:', req.url);
-  console.log('Full URL:', req.protocol + '://' + req.get('host') + req.url);
+  const reqHost = typeof req.get === 'function' ? req.get('host') : (req.headers?.['host'] || '');
+  console.log('Full URL:', `${req.protocol || 'https'}://${reqHost}${req.url || req.originalUrl || ''}`);
   console.log('Query params:', JSON.stringify(req.query, null, 2));
   console.log('Headers:', JSON.stringify(req.headers, null, 2));
   console.log('Body:', JSON.stringify(req.body, null, 2));
   console.log('Path:', req.path);
   console.log('=====================================');
 
-  // Accept both GET and POST for flexibility
-  if (req.method !== "GET" && req.method !== "POST") {
-    res.set("Allow", "GET, POST");
+  if (req.method !== "GET") {
+    res.set("Allow", "GET");
     res.status(405).json({ success: false, error: "Method not allowed" });
     return;
   }
@@ -700,16 +719,11 @@ async function handleTheoremReachRewardHttp(
     return;
   }
 
-  // Parse parameters from both query string and body (POST fallback)
-  let queryPayload: Record<string, unknown> =
+  // Strictly parse query parameters only (never merge req.body into signed GET params)
+  const queryPayload: Record<string, unknown> =
     req.query && typeof req.query === "object" && !Array.isArray(req.query)
       ? (req.query as Record<string, unknown>)
       : {};
-
-  // For POST requests, also include body parameters
-  if (req.method === "POST" && req.body && typeof req.body === "object") {
-    queryPayload = { ...queryPayload, ...req.body };
-  }
 
   const parsed = parseTheoremReachRewardPayload(queryPayload);
   if (parsed.kind === "invalid") {
@@ -718,14 +732,7 @@ async function handleTheoremReachRewardHttp(
     console.log('Payload:', JSON.stringify(queryPayload, null, 2));
     console.log('=================================');
     
-    // For debugging, return 200 with error info instead of 400
-    res.status(200).json({ 
-      success: false, 
-      status: "invalid_payload", 
-      error: parsed.error,
-      debug: true,
-      receivedPayload: queryPayload
-    });
+    res.status(400).json({ success: false, status: "invalid_payload", error: parsed.error });
     return;
   }
   if (parsed.kind === "ignored") {

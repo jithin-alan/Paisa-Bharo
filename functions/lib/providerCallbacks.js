@@ -493,6 +493,16 @@ async function executeCallback(input) {
     }
 }
 async function handleTheoremReachEventHttp(req, res, allowedFunctionNames) {
+    // TEMPORARY DEBUG LOGGING
+    console.log('=== THEOREMREACH EVENT WEBHOOK DEBUG ===');
+    console.log('Method:', req.method);
+    console.log('URL:', req.url);
+    console.log('Full URL:', req.protocol + '://' + req.get('host') + req.url);
+    console.log('Query params:', JSON.stringify(req.query, null, 2));
+    console.log('Headers:', JSON.stringify(req.headers, null, 2));
+    console.log('Body:', JSON.stringify(req.body, null, 2));
+    console.log('Path:', req.path);
+    console.log('=====================================');
     if (req.method !== "POST") {
         res.set("Allow", "POST");
         res.status(405).json({ success: false, error: "Method not allowed" });
@@ -518,6 +528,11 @@ async function handleTheoremReachEventHttp(req, res, allowedFunctionNames) {
     }
     const parsed = (0, theoremreach_1.parseTheoremReachEventPayload)(req.query || {}, req.body);
     if (parsed.kind === "invalid") {
+        console.log("=== THEOREMREACH PARSE ERROR ===");
+        console.log("Error:", parsed.error);
+        console.log("Query:", JSON.stringify(req.query, null, 2));
+        console.log("Body:", JSON.stringify(req.body, null, 2));
+        console.log("=================================");
         res.status(400).json({ success: false, status: "invalid_payload", error: parsed.error });
         return;
     }
@@ -552,8 +567,19 @@ async function handleTheoremReachEventHttp(req, res, allowedFunctionNames) {
     res.status(code).json(result);
 }
 async function handleTheoremReachRewardHttp(req, res) {
-    if (req.method !== "GET") {
-        res.set("Allow", "GET");
+    // TEMPORARY DEBUG LOGGING
+    console.log('=== THEOREMREACH CALLBACK DEBUG ===');
+    console.log('Method:', req.method);
+    console.log('URL:', req.url);
+    console.log('Full URL:', req.protocol + '://' + req.get('host') + req.url);
+    console.log('Query params:', JSON.stringify(req.query, null, 2));
+    console.log('Headers:', JSON.stringify(req.headers, null, 2));
+    console.log('Body:', JSON.stringify(req.body, null, 2));
+    console.log('Path:', req.path);
+    console.log('=====================================');
+    // Accept both GET and POST for flexibility
+    if (req.method !== "GET" && req.method !== "POST") {
+        res.set("Allow", "GET, POST");
         res.status(405).json({ success: false, error: "Method not allowed" });
         return;
     }
@@ -568,13 +594,28 @@ async function handleTheoremReachRewardHttp(req, res) {
         res.status(403).json({ success: false, status: "invalid_signature", error: "Invalid signature" });
         return;
     }
-    // Strictly parse query parameters only (never merge req.body into signed GET params)
-    const queryPayload = req.query && typeof req.query === "object" && !Array.isArray(req.query)
+    // Parse parameters from both query string and body (POST fallback)
+    let queryPayload = req.query && typeof req.query === "object" && !Array.isArray(req.query)
         ? req.query
         : {};
+    // For POST requests, also include body parameters
+    if (req.method === "POST" && req.body && typeof req.body === "object") {
+        queryPayload = { ...queryPayload, ...req.body };
+    }
     const parsed = (0, theoremreach_1.parseTheoremReachRewardPayload)(queryPayload);
     if (parsed.kind === "invalid") {
-        res.status(400).json({ success: false, status: "invalid_payload", error: parsed.error });
+        console.log('=== THEOREMREACH PARSE ERROR ===');
+        console.log('Error:', parsed.error);
+        console.log('Payload:', JSON.stringify(queryPayload, null, 2));
+        console.log('=================================');
+        // For debugging, return 200 with error info instead of 400
+        res.status(200).json({
+            success: false,
+            status: "invalid_payload",
+            error: parsed.error,
+            debug: true,
+            receivedPayload: queryPayload
+        });
         return;
     }
     if (parsed.kind === "ignored") {

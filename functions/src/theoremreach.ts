@@ -502,6 +502,11 @@ export type ParsedTheoremReachEvent =
       externalTransactionId: string;
       banReason: string;
     }
+  | {
+      kind: "test";
+      encSalt: string;
+      userId: string;
+    }
   | { kind: "invalid"; error: string };
 
 /**
@@ -520,25 +525,50 @@ export function parseTheoremReachEventPayload(
     }
   }
 
-  const encSalt = str(query.enc_salt);
-  if (!encSalt || !isSafeFirestoreId(encSalt)) {
-    return invalid("Missing or invalid enc_salt query parameter");
-  }
-
-  if (!body || typeof body !== "object" || Array.isArray(body)) {
-    return invalid("Invalid webhook body");
-  }
-
-  const root = body as Record<string, unknown>;
+  const root = body && typeof body === "object" && !Array.isArray(body)
+    ? (body as Record<string, unknown>)
+    : {};
   const data = root.data && typeof root.data === "object" && !Array.isArray(root.data)
     ? (root.data as Record<string, unknown>)
     : root;
 
-  const eventType = str(data.event_type);
-  const userId = str(data.user_id);
+  const eventType = str(data.event_type || query.event_type);
+  const isTest =
+    !eventType ||
+    eventType === "test" ||
+    eventType === "ping" ||
+    eventType === "webhook_test" ||
+    data.test === true ||
+    query.test === "true";
+
+  const encSalt = str(query.enc_salt) || (isTest ? "test_salt" : null);
+  if (!encSalt || !isSafeFirestoreId(encSalt)) {
+    if (isTest) {
+      // Allow fallback salt for test pings even if enc_salt query param is missing
+      return { kind: "test", encSalt: "test_salt", userId: "test_user" };
+    }
+    return invalid("Missing or invalid enc_salt query parameter");
+  }
+
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    if (isTest) {
+      return { kind: "test", encSalt, userId: "test_user" };
+    }
+    return invalid("Invalid webhook body");
+  }
+
+  const userId = str(data.user_id || query.user_id) || (isTest ? "test_user" : null);
   const at = str(data.at) ?? "";
   const apiKey = str(data.api_key);
   const externalTransactionId = str(data.external_transaction_id) ?? "";
+
+  if (isTest) {
+    return {
+      kind: "test",
+      encSalt,
+      userId: userId && isSafeFirestoreId(userId) ? userId : "test_user",
+    };
+  }
 
   if (!eventType || !userId || !isSafeFirestoreId(userId) || userId === "guest_user") {
     return invalid("Missing or invalid event_type or user_id");
