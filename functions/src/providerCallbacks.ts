@@ -575,6 +575,17 @@ export async function handleTheoremReachEventHttp(
   res: HttpResponse,
   allowedFunctionNames?: readonly string[]
 ): Promise<void> {
+  // TEMPORARY DEBUG LOGGING
+  console.log('=== THEOREMREACH EVENT WEBHOOK DEBUG ===');
+  console.log('Method:', req.method);
+  console.log('URL:', req.url);
+  console.log('Full URL:', req.protocol + '://' + req.get('host') + req.url);
+  console.log('Query params:', JSON.stringify(req.query, null, 2));
+  console.log('Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('Body:', JSON.stringify(req.body, null, 2));
+  console.log('Path:', req.path);
+  console.log('=====================================');
+
   if (req.method !== "POST") {
     res.set("Allow", "POST");
     res.status(405).json({ success: false, error: "Method not allowed" });
@@ -608,6 +619,12 @@ export async function handleTheoremReachEventHttp(
     req.body
   );
   if (parsed.kind === "invalid") {
+    console.log("=== THEOREMREACH PARSE ERROR ===");
+    console.log("Error:", parsed.error);
+    console.log("Query:", JSON.stringify(req.query, null, 2));
+    console.log("Body:", JSON.stringify(req.body, null, 2));
+    console.log("=================================");
+    
     res.status(400).json({ success: false, status: "invalid_payload", error: parsed.error });
     return;
   }
@@ -652,8 +669,20 @@ async function handleTheoremReachRewardHttp(
   req: HttpRequest,
   res: HttpResponse
 ): Promise<void> {
-  if (req.method !== "GET") {
-    res.set("Allow", "GET");
+  // TEMPORARY DEBUG LOGGING
+  console.log('=== THEOREMREACH CALLBACK DEBUG ===');
+  console.log('Method:', req.method);
+  console.log('URL:', req.url);
+  console.log('Full URL:', req.protocol + '://' + req.get('host') + req.url);
+  console.log('Query params:', JSON.stringify(req.query, null, 2));
+  console.log('Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('Body:', JSON.stringify(req.body, null, 2));
+  console.log('Path:', req.path);
+  console.log('=====================================');
+
+  // Accept both GET and POST for flexibility
+  if (req.method !== "GET" && req.method !== "POST") {
+    res.set("Allow", "GET, POST");
     res.status(405).json({ success: false, error: "Method not allowed" });
     return;
   }
@@ -671,15 +700,32 @@ async function handleTheoremReachRewardHttp(
     return;
   }
 
-  // Strictly parse query parameters only (never merge req.body into signed GET params)
-  const queryPayload: Record<string, unknown> =
+  // Parse parameters from both query string and body (POST fallback)
+  let queryPayload: Record<string, unknown> =
     req.query && typeof req.query === "object" && !Array.isArray(req.query)
       ? (req.query as Record<string, unknown>)
       : {};
 
+  // For POST requests, also include body parameters
+  if (req.method === "POST" && req.body && typeof req.body === "object") {
+    queryPayload = { ...queryPayload, ...req.body };
+  }
+
   const parsed = parseTheoremReachRewardPayload(queryPayload);
   if (parsed.kind === "invalid") {
-    res.status(400).json({ success: false, status: "invalid_payload", error: parsed.error });
+    console.log('=== THEOREMREACH PARSE ERROR ===');
+    console.log('Error:', parsed.error);
+    console.log('Payload:', JSON.stringify(queryPayload, null, 2));
+    console.log('=================================');
+    
+    // For debugging, return 200 with error info instead of 400
+    res.status(200).json({ 
+      success: false, 
+      status: "invalid_payload", 
+      error: parsed.error,
+      debug: true,
+      receivedPayload: queryPayload
+    });
     return;
   }
   if (parsed.kind === "ignored") {
