@@ -643,13 +643,13 @@ export async function handleTheoremReachEventHttp(
     return;
   }
 
-  if (parsed.kind === "test" || parsed.kind === "unhandled") {
-    console.log(`[TheoremReach] Event webhook received ${parsed.kind} event (${parsed.kind === 'unhandled' ? parsed.eventType : 'test'}). Logging and returning 200 OK.`);
+  if (parsed.kind === "test") {
+    console.log(`[TheoremReach] Event webhook received test event. Logging and returning 200 OK.`);
     res.status(200).json({
       success: true,
       status: "ok",
       message: "TheoremReach event received successfully.",
-      eventType: parsed.kind === "test" ? "test" : parsed.eventType,
+      eventType: "test",
     });
     return;
   }

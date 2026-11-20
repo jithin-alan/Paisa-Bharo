@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Moon, Globe, Mail, Smartphone } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Moon, Globe, Mail, Smartphone, AlertCircle, ExternalLink } from 'lucide-react';
 import { LegalComplianceModal, LegalTabType } from '../components/LegalComplianceModal';
+import { getLegalDocumentUrls } from '../config/legalLinks';
 
 interface Props {
   onGoogleLogin: () => void;
@@ -71,6 +72,10 @@ export const LandingPage: React.FC<Props> = ({
 }) => {
   const [legalModalOpen, setLegalModalOpen] = useState(false);
   const [selectedLegalTab, setSelectedLegalTab] = useState<LegalTabType>('privacy');
+  const [acceptedLegalTerms, setAcceptedLegalTerms] = useState(false);
+  const [legalConsentError, setLegalConsentError] = useState('');
+  const consentCheckboxRef = useRef<HTMLInputElement | null>(null);
+  const { termsOfServiceUrl, privacyPolicyUrl } = getLegalDocumentUrls();
 
   const openLegalModal = (tab: LegalTabType) => {
     setSelectedLegalTab(tab);
@@ -85,6 +90,16 @@ export const LandingPage: React.FC<Props> = ({
     setAuthMode(mode);
     setPhoneStep('idle');
     setOtp('');
+  };
+
+  const ensureLegalConsent = (): boolean => {
+    if (acceptedLegalTerms) {
+      if (legalConsentError) setLegalConsentError('');
+      return true;
+    }
+    setLegalConsentError('Please accept the Terms of Service and Privacy Policy to continue.');
+    consentCheckboxRef.current?.focus();
+    return false;
   };
 
   // Country codes for phone auth
@@ -210,6 +225,10 @@ export const LandingPage: React.FC<Props> = ({
   const handleContinue = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
+    if (!ensureLegalConsent()) {
+      return;
+    }
+
     try {
       if (authMode === 'phone') {
         if (phoneStep === 'idle') {
@@ -223,6 +242,13 @@ export const LandingPage: React.FC<Props> = ({
     } catch (error) {
       console.error('Authentication error:', error);
     }
+  };
+
+  const handleGoogleAuthClick = () => {
+    if (!ensureLegalConsent()) {
+      return;
+    }
+    onGoogleLogin();
   };
 
   const handleVerifyOtp = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -339,7 +365,74 @@ export const LandingPage: React.FC<Props> = ({
           {/* Registration Card */}
           <div id="join" className="lg:pl-12">
             <div className="bg-[#f7f8fc] rounded-3xl border border-[#bde0fe] p-8 shadow-sm">
-              <h2 className="text-2xl font-extrabold mb-6">Join for free!</h2>
+              <h2 className="text-2xl font-extrabold mb-4">Join for free!</h2>
+
+              {/* Required User Consent for All Registration Methods */}
+              <div
+                className={`mb-5 rounded-2xl border p-3.5 transition-colors ${
+                  legalConsentError
+                    ? 'bg-red-50 border-red-300'
+                    : 'bg-white border-[#bde0fe]'
+                }`}
+              >
+                <label
+                  htmlFor="registration-legal-consent"
+                  className="flex items-start gap-3 cursor-pointer min-h-[44px] text-xs sm:text-[13px] leading-relaxed text-[#1e1b2e]"
+                >
+                  <input
+                    ref={consentCheckboxRef}
+                    id="registration-legal-consent"
+                    type="checkbox"
+                    required
+                    aria-required="true"
+                    aria-invalid={Boolean(legalConsentError)}
+                    checked={acceptedLegalTerms}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setAcceptedLegalTerms(checked);
+                      if (checked && legalConsentError) {
+                        setLegalConsentError('');
+                      }
+                    }}
+                    className="mt-0.5 h-5 w-5 shrink-0 rounded border-gray-300 text-[#072ac8] accent-[#072ac8] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#072ac8] focus-visible:ring-offset-2"
+                  />
+                  <span>
+                    I have read and agree to the{' '}
+                    <a
+                      href={termsOfServiceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-0.5 font-bold text-[#072ac8] underline underline-offset-2 hover:text-[#05219e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#072ac8] rounded"
+                    >
+                      <span>Terms of Service</span>
+                      <ExternalLink className="w-3 h-3 inline shrink-0" aria-hidden="true" />
+                    </a>{' '}
+                    and{' '}
+                    <a
+                      href={privacyPolicyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-0.5 font-bold text-[#072ac8] underline underline-offset-2 hover:text-[#05219e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#072ac8] rounded"
+                    >
+                      <span>Privacy Policy</span>
+                      <ExternalLink className="w-3 h-3 inline shrink-0" aria-hidden="true" />
+                    </a>
+                    . <span className="text-red-600 font-semibold" aria-hidden="true">*</span>
+                  </span>
+                </label>
+
+                {legalConsentError && (
+                  <div
+                    role="alert"
+                    className="mt-2 flex items-start gap-1.5 text-xs font-semibold text-red-700 pl-8"
+                  >
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+                    <span>{legalConsentError}</span>
+                  </div>
+                )}
+              </div>
 
               {/* Authentication Tabs */}
               <div className="flex gap-2 mb-4">
@@ -534,7 +627,7 @@ export const LandingPage: React.FC<Props> = ({
               {/* Google Login */}
               <button
                 type="button"
-                onClick={onGoogleLogin}
+                onClick={handleGoogleAuthClick}
                 disabled={googleLoading}
                 className="w-full py-3 rounded-xl border-2 border-[#072ac8] bg-white text-[#072ac8] font-bold flex items-center justify-center gap-3 hover:bg-[#e6f4fa] transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
               >

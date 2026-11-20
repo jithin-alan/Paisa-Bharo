@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { X, ShieldCheck, FileText, Coins, Mail, Trash2, Users, Eye, AlertCircle, CheckCircle2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { X, ShieldCheck, FileText, Coins, Mail, Trash2, Users, Eye, CheckCircle2, ExternalLink } from 'lucide-react';
 import { SUPPORTED_CURRENCIES } from '../services/currencies';
+import { getLegalDocumentUrls } from '../config/legalLinks';
 
 export type LegalTabType = 'privacy' | 'terms' | 'rewards' | 'support' | 'deletion' | 'eligibility' | 'transparency';
 
@@ -18,6 +19,13 @@ export const LegalComplianceModal: React.FC<LegalComplianceModalProps> = ({
   const [activeTab, setActiveTab] = useState<LegalTabType>(initialTab);
   const [deletionConfirmed, setDeletionConfirmed] = useState(false);
   const [deletionSuccess, setDeletionSuccess] = useState(false);
+  const { termsOfServiceUrl, privacyPolicyUrl } = getLegalDocumentUrls();
+
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab, isOpen]);
 
   if (!isOpen) return null;
 
@@ -109,6 +117,7 @@ export const LegalComplianceModal: React.FC<LegalComplianceModalProps> = ({
                 <h4 className="font-extrabold text-[#072ac8]">2. Third-Party Provider Integrations</h4>
                 <p>We partner with trusted global market research and offerwall supply networks:</p>
                 <ul className="list-disc pl-5 space-y-1">
+                  <li><strong>TheoremReach:</strong> Delivers market research surveys using signed pseudonymous user IDs and server-to-server reward and reversal verification callbacks.</li>
                   <li><strong>Cint Supply API:</strong> Delivers high-yield research surveys. Receives pseudonymous respondent IDs and qualification criteria.</li>
                   <li><strong>AdGem & BitLabs Offerwalls:</strong> Provides sponsored app tasks and survey routers using encrypted sub-IDs.</li>
                   <li><strong>Affiliate Networks (Awin, CJ, Impact):</strong> Tracks merchant store conversions for cashback verification.</li>
@@ -369,8 +378,29 @@ export const LegalComplianceModal: React.FC<LegalComplianceModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 sm:p-5 border-t border-gray-100 bg-gray-50 flex items-center justify-between text-xs text-gray-500">
-          <span>Need help? Contact <a href="mailto:stickadmob@gmail.com" className="text-[#072ac8] font-bold hover:underline">stickadmob@gmail.com</a></span>
+        <div className="p-4 sm:p-5 border-t border-gray-100 bg-gray-50 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-500">
+          <div className="flex flex-wrap items-center gap-3">
+            <span>Need help? Contact <a href="mailto:stickadmob@gmail.com" className="text-[#072ac8] font-bold hover:underline">stickadmob@gmail.com</a></span>
+            <span aria-hidden="true">&middot;</span>
+            <a
+              href={termsOfServiceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[#072ac8] font-bold hover:underline"
+            >
+              <span>Public Terms Page</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+            <a
+              href={privacyPolicyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[#072ac8] font-bold hover:underline"
+            >
+              <span>Public Privacy Page</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
           <button
             onClick={onClose}
             className="px-5 py-2 rounded-xl bg-[#072ac8] hover:bg-[#05219e] text-white font-extrabold transition cursor-pointer shadow-sm"
