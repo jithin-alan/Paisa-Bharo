@@ -857,6 +857,51 @@ describe('Phase 3: TheoremReach Production-Readiness Security Suite', () => {
       assert.equal(secondRev.coinsDeducted, 0);
     });
 
+    it('acknowledges zero-value reversal payloads (e.g. TheoremReach sample events) without debiting', async () => {
+      process.env.PAISA_BHARO_LIVE_POSTBACKS_ENABLED = 'true';
+      memDb.seed('users', 'user_zero', { uid: 'user_zero', coinsBalance: 500, lifetimeEarnings: 500 });
+
+      // Every entry in the reversal array carries a zero debit -> nothing to reverse.
+      const zeroRes = await executeTheoremReachReversalEvent({
+        encSalt: 'evt_zero_rev',
+        userId: 'user_zero',
+        at: '2026-11-18T00:07:00Z',
+        externalTransactionId: '',
+        reversedTransactions: [
+          { transactionId: 'tx_zero_a', debitCoins: 0, amountInDollars: '0', amountInCurrency: '0' },
+          { transactionId: 'tx_zero_b', debitCoins: 0, amountInDollars: '0', amountInCurrency: '0' },
+        ],
+      });
+      assert.equal(zeroRes.status, 'ok');
+      assert.equal(zeroRes.coinsDeducted, 0);
+      assert.equal(memDb.getDocData('users', 'user_zero')?.coinsBalance, 500);
+
+      // A mix of zero and non-zero entries should still debit the non-zero one.
+      await executeCallback({
+        provider: 'theoremreach',
+        transactionId: 'tx_real',
+        userId: 'user_zero',
+        coinsAwarded: 100,
+        reason: 'TheoremReach survey reward',
+        metadata: { externalTransactionId: '' },
+      });
+      assert.equal(memDb.getDocData('users', 'user_zero')?.coinsBalance, 600);
+
+      const mixedRes = await executeTheoremReachReversalEvent({
+        encSalt: 'evt_mixed_rev',
+        userId: 'user_zero',
+        at: '2026-11-18T00:08:00Z',
+        externalTransactionId: '',
+        reversedTransactions: [
+          { transactionId: 'tx_zero_skip', debitCoins: 0, amountInDollars: '0', amountInCurrency: '0' },
+          { transactionId: 'tx_real', debitCoins: 100, amountInDollars: '0.1', amountInCurrency: '100' },
+        ],
+      });
+      assert.equal(mixedRes.status, 'processed');
+      assert.equal(mixedRes.coinsDeducted, 100);
+      assert.equal(memDb.getDocData('users', 'user_zero')?.coinsBalance, 500);
+    });
+
     it('requires api_key on event webhook even when HMAC signature matches', async () => {
       const base =
         'https://us-central1-paisa-bharo-app.cloudfunctions.net/providerPostback/theoremreach-event?enc_salt=evt_no_key';
