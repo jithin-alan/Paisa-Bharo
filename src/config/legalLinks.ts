@@ -1,3 +1,6 @@
+export const TERMS_VERSION = '2026-11-20';
+export const PRIVACY_POLICY_VERSION = '2026-11-20';
+
 export function getLegalDocumentUrls(baseUrlOverride?: string): {
   termsOfServiceUrl: string;
   privacyPolicyUrl: string;
@@ -17,7 +20,7 @@ export function getLegalDocumentUrls(baseUrlOverride?: string): {
   }
 
   return {
-    termsOfServiceUrl: '/terms-of-service.html',
-    privacyPolicyUrl: '/privacy-policy.html',
+    termsOfServiceUrl: '/terms',
+    privacyPolicyUrl: '/privacy',
   };
 }

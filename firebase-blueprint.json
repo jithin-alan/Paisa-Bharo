@@ -116,6 +116,20 @@
         "updatedBy": { "type": "string", "maxLength": 128 }
       },
       "required": ["offerwallProvider", "maintenanceMode", "maxDailyCoins"]
+    },
+    "UserConsent": {
+      "title": "UserConsent",
+      "description": "Immutable audit record of a user's Terms of Service and Privacy Policy consent at registration.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "consentStatus": { "type": "string", "enum": ["accepted"] },
+        "consentedAt": { "type": "string", "format": "date-time" },
+        "termsVersion": { "type": "string", "maxLength": 32, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "privacyPolicyVersion": { "type": "string", "maxLength": 32, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "authMethod": { "type": "string", "enum": ["phone", "email", "google"] }
+      },
+      "required": ["uid", "consentStatus", "consentedAt", "termsVersion", "privacyPolicyVersion", "authMethod"]
     }
   },
   "firestore": {
@@ -146,6 +160,10 @@
     "/system_settings/{settingId}": {
       "schema": { "$ref": "#/entities/SystemSettings" },
       "description": "Global app parameters and admin configurations."
+    },
+    "/user_consents/{consentId}": {
+      "schema": { "$ref": "#/entities/UserConsent" },
+      "description": "Immutable registration legal consent audit records keyed by UID and policy versions."
     }
   }
 }

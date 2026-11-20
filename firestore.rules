@@ -205,5 +205,48 @@ service cloud.firestore {
     match /theoremreach_sessions/{sessionId} {
       allow read, write: if false;
     }
+
+    // Immutable Legal Consent Audit Records
+    function isValidUserConsent(data) {
+      return data.keys().hasAll([
+               'uid',
+               'consentStatus',
+               'consentedAt',
+               'termsVersion',
+               'privacyPolicyVersion',
+               'authMethod'
+             ]) &&
+             data.keys().hasOnly([
+               'uid',
+               'consentStatus',
+               'consentedAt',
+               'termsVersion',
+               'privacyPolicyVersion',
+               'authMethod'
+             ]) &&
+             data.uid is string && data.uid.size() > 0 && data.uid.size() <= 128 &&
+             data.uid == request.auth.uid &&
+             data.consentStatus == 'accepted' &&
+             data.consentedAt == request.time &&
+             data.termsVersion is string && data.termsVersion.size() >= 1 && data.termsVersion.size() <= 32 &&
+             data.termsVersion.matches('^[a-zA-Z0-9_\\-]+$') &&
+             data.privacyPolicyVersion is string && data.privacyPolicyVersion.size() >= 1 && data.privacyPolicyVersion.size() <= 32 &&
+             data.privacyPolicyVersion.matches('^[a-zA-Z0-9_\\-]+$') &&
+             data.authMethod in ['phone', 'email', 'google'];
+    }
+
+    match /user_consents/{consentId} {
+      allow get: if isSignedIn() && (
+        (resource == null && consentId.matches('^' + request.auth.uid + '_[a-zA-Z0-9_\\-]+$')) ||
+        (resource != null && resource.data.uid == request.auth.uid) ||
+        isAdmin()
+      );
+      allow list: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() &&
+                       isValidId(consentId) &&
+                       isValidUserConsent(incoming()) &&
+                       consentId == request.auth.uid + '_' + incoming().termsVersion + '_' + incoming().privacyPolicyVersion;
+      allow update, delete: if false; // Users cannot modify or delete consent audit records arbitrarily
+    }
   }
 }

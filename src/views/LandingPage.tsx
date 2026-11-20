@@ -4,11 +4,12 @@ import { LegalComplianceModal, LegalTabType } from '../components/LegalComplianc
 import { getLegalDocumentUrls } from '../config/legalLinks';
 
 interface Props {
-  onGoogleLogin: () => void;
+  onGoogleLogin: (consentAccepted: boolean) => void;
   onSendOtp: () => Promise<void>;
-  onVerifyOtp: (otp: string) => Promise<void>;
-  onEmailLogin: (email: string, password: string) => Promise<void>;
-  onEmailSignup: (email: string, password: string) => Promise<void>;
+  onVerifyOtp: (otp: string, consentAccepted: boolean) => Promise<void>;
+  onEmailLogin: (email: string, password: string, consentAccepted: boolean) => Promise<void>;
+  onEmailSignup: (email: string, password: string, consentAccepted: boolean) => Promise<void>;
+  onNavigatePath?: (path: string) => void;
 
   phoneStep: 'idle' | 'code';
   setPhoneStep: (v: 'idle' | 'code') => void;
@@ -69,6 +70,7 @@ export const LandingPage: React.FC<Props> = ({
   emailError,
   googleLoading = false,
   googleError = '',
+  onNavigatePath,
 }) => {
   const [legalModalOpen, setLegalModalOpen] = useState(false);
   const [selectedLegalTab, setSelectedLegalTab] = useState<LegalTabType>('privacy');
@@ -100,6 +102,17 @@ export const LandingPage: React.FC<Props> = ({
     setLegalConsentError('Please accept the Terms of Service and Privacy Policy to continue.');
     consentCheckboxRef.current?.focus();
     return false;
+  };
+
+  const handleFooterPolicyLink = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    url: string,
+    localPath: '/terms' | '/privacy'
+  ) => {
+    if (url.startsWith('/') && onNavigatePath) {
+      e.preventDefault();
+      onNavigatePath(localPath);
+    }
   };
 
   // Country codes for phone auth
@@ -225,7 +238,8 @@ export const LandingPage: React.FC<Props> = ({
   const handleContinue = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!ensureLegalConsent()) {
+    const isExistingEmailLogin = authMode === 'email' && isLogin;
+    if (!isExistingEmailLogin && !ensureLegalConsent()) {
       return;
     }
 
@@ -235,9 +249,9 @@ export const LandingPage: React.FC<Props> = ({
           await onSendOtp();
         }
       } else if (isLogin) {
-        await onEmailLogin(email, password);
+        await onEmailLogin(email, password, acceptedLegalTerms);
       } else {
-        await onEmailSignup(email, password);
+        await onEmailSignup(email, password, acceptedLegalTerms);
       }
     } catch (error) {
       console.error('Authentication error:', error);
@@ -248,16 +262,17 @@ export const LandingPage: React.FC<Props> = ({
     if (!ensureLegalConsent()) {
       return;
     }
-    onGoogleLogin();
+    onGoogleLogin(true);
   };
 
   const handleVerifyOtp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (otp.length !== 6) return;
+    if (!ensureLegalConsent()) return;
 
     try {
-      await onVerifyOtp(otp);
+      await onVerifyOtp(otp, acceptedLegalTerms);
     } catch (error) {
       console.error('OTP verification error:', error);
     }
@@ -419,7 +434,7 @@ export const LandingPage: React.FC<Props> = ({
                       <span>Privacy Policy</span>
                       <ExternalLink className="w-3 h-3 inline shrink-0" aria-hidden="true" />
                     </a>
-                    . <span className="text-red-600 font-semibold" aria-hidden="true">*</span>
+                    .
                   </span>
                 </label>
 
@@ -754,13 +769,25 @@ export const LandingPage: React.FC<Props> = ({
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-4 font-bold text-gray-700">
-            <button onClick={() => openLegalModal('privacy')} className="hover:text-[#072ac8] transition cursor-pointer">
+            <a
+              href={privacyPolicyUrl}
+              onClick={(e) => handleFooterPolicyLink(e, privacyPolicyUrl, '/privacy')}
+              target={privacyPolicyUrl.startsWith('/') ? undefined : '_blank'}
+              rel={privacyPolicyUrl.startsWith('/') ? undefined : 'noopener noreferrer'}
+              className="hover:text-[#072ac8] transition cursor-pointer"
+            >
               Privacy Policy
-            </button>
+            </a>
             <span>•</span>
-            <button onClick={() => openLegalModal('terms')} className="hover:text-[#072ac8] transition cursor-pointer">
-              Terms & Conditions
-            </button>
+            <a
+              href={termsOfServiceUrl}
+              onClick={(e) => handleFooterPolicyLink(e, termsOfServiceUrl, '/terms')}
+              target={termsOfServiceUrl.startsWith('/') ? undefined : '_blank'}
+              rel={termsOfServiceUrl.startsWith('/') ? undefined : 'noopener noreferrer'}
+              className="hover:text-[#072ac8] transition cursor-pointer"
+            >
+              Terms of Service
+            </a>
             <span>•</span>
             <button onClick={() => openLegalModal('rewards')} className="hover:text-[#072ac8] transition cursor-pointer">
               Reward Policy (1000 Coins = $1.00)

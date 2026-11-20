@@ -185,6 +185,20 @@ describe('Firestore Security Rules Suite', () => {
     });
   });
 
+  describe('User Legal Consent Audit Rules', () => {
+    it('enforces immutable server-timestamped consent records keyed to authenticated UID', () => {
+      const match = rulesContent.match(/match\s*\/user_consents\/\{consentId\}\s*\{([\s\S]*?)\}/);
+      assert.ok(match, 'match /user_consents/{consentId} block must exist');
+      const block = match[1];
+      assert.match(rulesContent, /function isValidUserConsent\(data\)/);
+      assert.match(rulesContent, /data\.uid\s*==\s*request\.auth\.uid/);
+      assert.match(rulesContent, /data\.consentStatus\s*==\s*'accepted'/);
+      assert.match(rulesContent, /data\.consentedAt\s*==\s*request\.time/);
+      assert.match(block, /allow create:/);
+      assert.match(block, /allow update,\s*delete:\s*if false;/);
+    });
+  });
+
   describe('@firebase/rules-unit-testing Context Validation', () => {
     it('initializes rules unit testing environment successfully when configured', () => {
       assert.ok(true, 'Rules unit testing module loaded and initialized');

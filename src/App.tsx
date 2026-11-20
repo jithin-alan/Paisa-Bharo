@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Home,
   Globe,
@@ -41,15 +41,42 @@ import { PaisaBharoCoin } from './components/Illustrations';
 import { AdminConfigView } from './views/AdminConfigView';
 import { useIsAdmin } from './hooks/useIsAdmin';
 import { calculateStreakStatus } from './services/streakService';
+import { LegalPolicyPage } from './views/LegalPolicyPage';
+import { recordUserConsent } from './services/consentService';
 
 type TabType = 'home' | 'polls' | 'offers' | 'cashout' | 'leaderboard' | 'refer' | 'settings' | 'theoremreach';
 
+const normalizeLegalPath = (path: string): string => {
+  const clean = path.replace(/\/+$/, '');
+  return clean || '/';
+};
+
 const AppContent: React.FC = () => {
+  const [currentPath, setCurrentPath] = useState<string>(() =>
+    typeof window !== 'undefined' ? normalizeLegalPath(window.location.pathname) : '/'
+  );
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [theoremReachReturnTab, setTheoremReachReturnTab] = useState<TabType>('home');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [adminViewMode, setAdminViewMode] = useState<'admin' | 'user'>('admin');
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(normalizeLegalPath(window.location.pathname));
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigateToPath = (path: string) => {
+    const target = normalizeLegalPath(path);
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', target);
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }
+    setCurrentPath(target);
+  };
 
   // Phone OTP sign-in
   const [phoneStep, setPhoneStep] = useState<'idle' | 'code'>('idle');
@@ -83,9 +110,9 @@ const AppContent: React.FC = () => {
 
   const [googleError, setGoogleError] = useState('');
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = async (consentAccepted: boolean = false) => {
     setGoogleError('');
-    const res = await loginWithGoogle();
+    const res = await loginWithGoogle(consentAccepted);
     if (!res.success && res.error) {
       setGoogleError(res.error);
     }
@@ -134,12 +161,15 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const verifyOtp = async () => {
+  const verifyOtp = async (submittedOtp?: string, consentAccepted: boolean = false) => {
     setPhoneError('');
     setPhoneLoading(true);
     try {
       if (!confirmationResult) throw new Error('No OTP request found');
-      await confirmationResult.confirm(otp);
+      const cred = await confirmationResult.confirm(submittedOtp ?? otp);
+      if (consentAccepted && cred?.user?.uid) {
+        await recordUserConsent(cred.user.uid, 'phone');
+      }
       // Auth state change will trigger landing removal
     } catch (e: any) {
       setPhoneError(e.message || 'Invalid OTP');
@@ -148,17 +178,33 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const handleEmailLogin = async (email: string, password: string) => {
+  const handleEmailLogin = async (
+    email: string,
+    password: string,
+    consentAccepted: boolean = false
+  ) => {
     setEmailError('');
     setPhoneLoading(true);
     const cleanEmail = email.trim().toLowerCase();
 
     try {
-      await signInWithEmailAndPassword(auth, cleanEmail, password);
+      const cred = await signInWithEmailAndPassword(auth, cleanEmail, password);
+      if (consentAccepted && cred?.user?.uid) {
+        await recordUserConsent(cred.user.uid, 'email');
+      }
     } catch (e: any) {
       if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
+        if (!consentAccepted) {
+          setEmailError(
+            'Account not found or invalid credentials. To register a new account, check the Terms of Service and Privacy Policy box and switch to Sign up.'
+          );
+          return;
+        }
         try {
-          await createUserWithEmailAndPassword(auth, cleanEmail, password);
+          const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
+          if (cred?.user?.uid) {
+            await recordUserConsent(cred.user.uid, 'email');
+          }
           return;
         } catch (signupErr: any) {
           if (signupErr.code === 'auth/operation-not-allowed') {
@@ -178,13 +224,24 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const handleEmailSignup = async (email: string, password: string) => {
+  const handleEmailSignup = async (
+    email: string,
+    password: string,
+    consentAccepted: boolean = false
+  ) => {
     setEmailError('');
+    if (!consentAccepted) {
+      setEmailError('Please read and agree to the Terms of Service and Privacy Policy before registering.');
+      return;
+    }
     setPhoneLoading(true);
     const cleanEmail = email.trim().toLowerCase();
 
     try {
-      await createUserWithEmailAndPassword(auth, cleanEmail, password);
+      const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
+      if (cred?.user?.uid) {
+        await recordUserConsent(cred.user.uid, 'email');
+      }
     } catch (e: any) {
       if (e.code === 'auth/operation-not-allowed') {
         setEmailError('Email/Password provider is disabled in Firebase Console. Please enable it in Firebase Console > Authentication > Sign-in method, or sign in with Google.');
@@ -195,6 +252,16 @@ const AppContent: React.FC = () => {
       setPhoneLoading(false);
     }
   };
+
+  // Publicly accessible legal policy routes (/terms and /privacy)
+  if (currentPath === '/terms' || currentPath === '/privacy') {
+    return (
+      <LegalPolicyPage
+        page={currentPath === '/terms' ? 'terms' : 'privacy'}
+        onNavigate={navigateToPath}
+      />
+    );
+  }
 
   if (authLoading) {
     return (
@@ -272,6 +339,7 @@ const AppContent: React.FC = () => {
         isLogin={isLogin}
         setIsLogin={setIsLogin}
         emailError={emailError}
+        onNavigatePath={navigateToPath}
       />
     );
   }

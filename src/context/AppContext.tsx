@@ -18,6 +18,7 @@ import {
 } from '../services/cloudFunctions';
 import { useIsAdmin } from '../hooks/useIsAdmin';
 import { getTodayString, getUserTimezone } from '../services/streakService';
+import { recordUserConsent } from '../services/consentService';
 
 interface AppContextType {
   user: UserProfile;
@@ -43,7 +44,7 @@ interface AppContextType {
   requestRedemption: (payoutMethod: string, amountCurrency: number, coinsSpent: number, accountDetails: string) => Promise<{ success: boolean; message?: string }>;
   applyReferralCode: (code: string) => Promise<{ success: boolean; message: string }>;
   awardCoins: (amount: number, reason: string) => Promise<boolean>;
-  loginWithGoogle: () => Promise<{ success: boolean; error?: string; errorCode?: string }>;
+  loginWithGoogle: (consentAccepted?: boolean) => Promise<{ success: boolean; error?: string; errorCode?: string }>;
   googleAuthLoading: boolean;
   logout: () => Promise<void>;
   soundEnabled: boolean;
@@ -870,10 +871,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const loginWithGoogle = async (): Promise<{ success: boolean; error?: string; errorCode?: string }> => {
+  const loginWithGoogle = async (
+    consentAccepted: boolean = false
+  ): Promise<{ success: boolean; error?: string; errorCode?: string }> => {
     setGoogleAuthLoading(true);
     try {
       const res = await signInWithPopup(auth, googleProvider);
+      if (consentAccepted && res.user?.uid) {
+        await recordUserConsent(res.user.uid, 'google');
+      }
       showToast(`Welcome, ${res.user.displayName || res.user.email || 'Friend'}!`, undefined, 'success');
       return { success: true };
     } catch (error: any) {
