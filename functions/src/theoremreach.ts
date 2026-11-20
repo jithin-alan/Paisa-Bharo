@@ -633,6 +633,12 @@ export function parseTheoremReachEventPayload(
         return invalid("Missing amount_in_currency or amount_in_dollars in reversed_transactions");
       }
 
+      // Zero-value reversals (such as TheoremReach's sample/test event) have nothing
+      // to debit. Skip them gracefully instead of failing the whole webhook with a 400.
+      if (debitCoins === 0) {
+        continue;
+      }
+
       if (!Number.isInteger(debitCoins) || debitCoins < 1 || debitCoins > MAX_COINS) {
         return invalid(`Invalid reversal amount for transaction ${transactionId}`);
       }
@@ -643,6 +649,11 @@ export function parseTheoremReachEventPayload(
         amountInDollars: str(entry.amount_in_dollars) ?? "",
         amountInCurrency: str(entry.amount_in_currency) ?? "",
       });
+    }
+
+    // Every entry was a zero-value reversal: acknowledge with 200 and touch no data.
+    if (reversedTransactions.length === 0) {
+      return { kind: "test", encSalt, userId };
     }
 
     return {
@@ -738,6 +749,25 @@ export async function executeTheoremReachReversalEvent(params: {
     }
   }
 
+  // Zero-value reversals (such as TheoremReach's sample/test event) have nothing
+  // to debit. Skip them gracefully instead of failing the whole webhook with a 400.
+  const filteredReversedTransactions = uniqueReversedTransactions.filter(
+    (tx) => tx.debitCoins > 0
+  );
+
+  // Every entry was a zero-value reversal: acknowledge with 200 and touch no data.
+  if (filteredReversedTransactions.length === 0) {
+    return {
+      success: true,
+      status: "ok",
+      message: "Zero-value reversal acknowledged; no debit applied.",
+      eventType: "reversal",
+      encSalt,
+      userId,
+      coinsDeducted: 0,
+    };
+  }
+
   const eventRef = db.collection("provider_events").doc(`theoremreach_${encSalt}`);
   const userRef = getUserRef(userId);
   const sessionRef = externalTransactionId
@@ -788,7 +818,7 @@ export async function executeTheoremReachReversalEvent(params: {
       }
 
       // Check existing reversal records and original credit records up front (all reads before writes)
-      const txPairs = uniqueReversedTransactions.map((tx) => ({
+      const txPairs = filteredReversedTransactions.map((tx) => ({
         tx,
         reversalRef: db.collection("provider_transactions").doc(`theoremreach_reversal_${tx.transactionId}`),
         originalCreditRef: db.collection("provider_transactions").doc(`theoremreach_${tx.transactionId}`),
