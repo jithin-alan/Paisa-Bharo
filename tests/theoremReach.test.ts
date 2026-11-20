@@ -876,6 +876,41 @@ describe('Phase 3: TheoremReach Production-Readiness Security Suite', () => {
       );
       assert.equal(missingKeyRes.statusCode, 403);
     });
+
+    it('returns 200 OK for validly signed unhandled or test event webhook, and 403 for missing signature', async () => {
+      const base =
+        'https://us-central1-paisa-bharo-app.cloudfunctions.net/theoremreachEventWebhook?enc_salt=evt_test_123';
+      const sig = signTheoremReachUrl(base, TEST_SECRET);
+      const testRes = mockRes();
+      await handleTheoremReachEventHttp(
+        {
+          method: 'POST',
+          headers: { host: 'us-central1-paisa-bharo-app.cloudfunctions.net' },
+          originalUrl: `/theoremreachEventWebhook?enc_salt=evt_test_123&hash=${sig}`,
+          query: { enc_salt: 'evt_test_123', hash: sig },
+          body: { data: { event_type: 'webhook_test' } },
+        } as any,
+        testRes as any,
+        ['theoremreachEventWebhook']
+      );
+      assert.equal(testRes.statusCode, 200);
+      assert.equal(testRes.body.status, 'ok');
+
+      // Unsigned request returns 403
+      const badRes = mockRes();
+      await handleTheoremReachEventHttp(
+        {
+          method: 'POST',
+          headers: { host: 'us-central1-paisa-bharo-app.cloudfunctions.net' },
+          originalUrl: `/theoremreachEventWebhook?enc_salt=evt_test_123`,
+          query: { enc_salt: 'evt_test_123' },
+          body: { data: { event_type: 'webhook_test' } },
+        } as any,
+        badRes as any,
+        ['theoremreachEventWebhook']
+      );
+      assert.equal(badRes.statusCode, 403);
+    });
   });
 
   describe('6. Existing Provider Regression & Frontend TheoremReachAdapter', () => {

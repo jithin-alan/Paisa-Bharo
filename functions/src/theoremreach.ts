@@ -507,6 +507,12 @@ export type ParsedTheoremReachEvent =
       encSalt: string;
       userId: string;
     }
+  | {
+      kind: "unhandled";
+      eventType: string;
+      encSalt: string;
+      userId: string | null;
+    }
   | { kind: "invalid"; error: string };
 
 /**
@@ -562,15 +568,16 @@ export function parseTheoremReachEventPayload(
   const apiKey = str(data.api_key);
   const externalTransactionId = str(data.external_transaction_id) ?? "";
 
-  if (isTest) {
+  if (eventType !== "ban" && eventType !== "reversal") {
     return {
-      kind: "test",
+      kind: "unhandled",
+      eventType: eventType ?? "unknown",
       encSalt,
-      userId: userId && isSafeFirestoreId(userId) ? userId : "test_user",
+      userId: userId && isSafeFirestoreId(userId) ? userId : null,
     };
   }
 
-  if (!eventType || !userId || !isSafeFirestoreId(userId) || userId === "guest_user") {
+  if (!userId || !isSafeFirestoreId(userId) || userId === "guest_user") {
     return invalid("Missing or invalid event_type or user_id");
   }
 
