@@ -316,7 +316,7 @@ export const LandingPage: React.FC<Props> = ({
       </header>
 
       {/* Hero Section */}
-      <section className="relative min-h-[calc(100vh-80px)] flex items-center justify-center">
+      <section className="relative min-h-[calc(var(--viewport-height)-80px)] flex items-center justify-center">
         <div className="max-w-7xl mx-auto px-6 py-20 grid lg:grid-cols-2 gap-12 items-center">
           <div>
             <div className="flex items-center gap-2 text-sm font-bold text-gray-600 mb-4">
@@ -652,7 +652,7 @@ export const LandingPage: React.FC<Props> = ({
 
       {/* Footer Legal & Support Links */}
       <footer className="border-t border-gray-200 bg-gray-50 py-12 px-6 text-gray-600 text-xs">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="w-full mx-auto flex flex-col md:flex-row items-center justify-between gap-6 safe-x">
           <div>
             <p className="font-extrabold text-sm text-gray-900">Paisa Bharo</p>
             <p className="text-[#072ac8] font-semibold mt-0.5">

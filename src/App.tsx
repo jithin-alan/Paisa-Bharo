@@ -280,10 +280,10 @@ const AppContent: React.FC = () => {
   const firstLetter = (userDisplayName.charAt(0) || 'J').toUpperCase();
 
   return (
-    <div className="min-h-screen bg-[#f7f8fc] text-[#1e1b2e] flex flex-col font-sans selection:bg-[#072ac8] selection:text-white">
+    <div className="min-h-[var(--viewport-height)] bg-[#f7f8fc] text-[#1e1b2e] flex flex-col font-sans selection:bg-[#072ac8] selection:text-white">
       {/* Top Navbar */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#d0e8f7] px-4 sm:px-8 py-3 transition-colors">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#d0e8f7] px-4 sm:px-8 py-3 transition-colors safe-top safe-x">
+        <div className="w-full mx-auto flex items-center justify-between gap-3">
           {/* Brand Logo & Name */}
           <div
             onClick={() => setActiveTab('home')}
@@ -564,7 +564,7 @@ const AppContent: React.FC = () => {
       )}
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-8 pb-24">
+      <main className="flex-1 w-full mx-auto p-4 sm:p-8 pb-24 safe-x">
         {activeTab === 'home' && (
           <HomeDashboardView
             onNavigateTab={setActiveTab}
@@ -591,7 +591,7 @@ const AppContent: React.FC = () => {
       <OfflineIndicator language={selectedLanguage} />
 
       {/* Bottom Navigation Bar for Mobile and Responsive PWA */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-xl border-t border-[#d0e8f7] py-2 px-2 safe-bottom shadow-lg">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-xl border-t border-[#d0e8f7] py-2 px-2 safe-bottom safe-x shadow-lg">
         <div className="max-w-md mx-auto flex items-center justify-around">
           {[
             { id: 'home', label: 'Home', icon: Home },

@@ -280,7 +280,7 @@ export const AdminConfigView: React.FC<AdminConfigViewProps> = ({ onSwitchToUser
   };
 
   return (
-    <div className="space-y-6 pb-12 text-gray-900 max-w-6xl mx-auto px-4 sm:px-6 pt-6 font-sans">
+    <div className="space-y-6 pb-12 text-gray-900 w-full mx-auto px-4 sm:px-6 pt-6 font-sans safe-x">
       {/* Top Banner / Header */}
       <div className="bg-white rounded-[28px] border border-[#bde0fe] p-6 sm:p-8 shadow-[0_4px_20px_rgba(7,42,200,0.05)]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
